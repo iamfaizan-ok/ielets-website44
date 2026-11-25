@@ -58,8 +58,8 @@ function HeroIllustration() {
 
 export function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-10 pb-12 sm:px-6 sm:pt-14 sm:pb-16">
-      <div className="grid items-center gap-10 lg:grid-cols-12">
+    <section className="mx-auto max-w-6xl px-4 pt-6 pb-8 sm:px-6 sm:pt-8 sm:pb-10">
+      <div className="grid items-center gap-8 lg:grid-cols-12">
         <div className="lg:col-span-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-forest">
             Online IELTS Preparation
@@ -115,7 +115,7 @@ export function Hero() {
       </div>
 
       {/* 3-column value proposition strip */}
-      <div className="mt-12 grid gap-4 border-t border-border pt-8 sm:grid-cols-3 sm:gap-6">
+      <div className="mt-8 grid gap-4 border-t border-border pt-6 sm:grid-cols-3 sm:gap-6">
         {HERO_FEATURES.map((feat, idx) => {
           const Icon = FEATURE_ICONS[idx];
           return (

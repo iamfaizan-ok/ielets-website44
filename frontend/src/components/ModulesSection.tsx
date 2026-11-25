@@ -11,7 +11,7 @@ const MODULE_ICONS: Record<string, typeof Headphones> = {
 
 export function ModulesSection() {
   return (
-    <section id="modules" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <section id="modules" className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6 sm:pt-10 sm:pb-14">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <h2 className="font-serif text-3xl font-semibold tracking-tight text-ink sm:text-4xl">

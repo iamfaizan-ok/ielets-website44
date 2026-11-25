@@ -113,8 +113,8 @@ export function DashboardHero() {
   const user = parseUser(rawUser);
 
   return (
-    <section className="mx-auto max-w-6xl px-4 pt-10 pb-10 sm:px-6 sm:pt-14 sm:pb-12">
-      <div className="grid items-center gap-10 lg:grid-cols-12">
+    <section className="mx-auto max-w-6xl px-4 pt-6 pb-6 sm:px-6 sm:pt-8 sm:pb-8">
+      <div className="grid items-center gap-8 lg:grid-cols-12">
         <div className="lg:col-span-6">
           <span className="inline-block rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-forest">
             {user.isNew ? "Your IELTS Workspace" : "Student Dashboard"}
