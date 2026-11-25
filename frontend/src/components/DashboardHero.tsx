@@ -137,7 +137,7 @@ export function DashboardHero() {
               href="#modules"
               className="inline-flex items-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
             >
-              {user.isNew ? "Start your practicing" : "Continue practicing"}
+              {user.isNew ? "Start your Daily Practice" : "Continue practicing"}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
