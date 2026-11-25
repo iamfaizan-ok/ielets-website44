@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, X } from "lucide-react";
 import { BrandLogo } from "./Navbar";
 
@@ -37,6 +38,7 @@ const INPUT_CLASS =
 
 export function AuthCard({ mode }: AuthCardProps) {
   const isSignup = mode === "signup";
+  const router = useRouter();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,7 +47,6 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,7 +69,17 @@ export function AuthCard({ mode }: AuthCardProps) {
       return;
     }
 
-    setSubmitted(true);
+    // ponytail: client-side session until Backend auth API is connected
+    const fallbackName = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Learner";
+    const displayName = isSignup
+      ? name.trim()
+      : fallbackName.replace(/\b\w/g, (c) => c.toUpperCase());
+
+    localStorage.setItem(
+      "bandora_user",
+      JSON.stringify({ name: displayName, email: email.trim(), isNew: isSignup })
+    );
+    router.push("/dashboard");
   }
 
   return (
@@ -116,17 +127,6 @@ export function AuthCard({ mode }: AuthCardProps) {
             className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800"
           >
             {error}
-          </p>
-        )}
-
-        {submitted && (
-          <p
-            role="status"
-            className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-900"
-          >
-            {isSignup
-              ? "Details validated! Account creation will connect to Backend API next."
-              : "Credentials validated! Login will connect to Backend API next."}
           </p>
         )}
 

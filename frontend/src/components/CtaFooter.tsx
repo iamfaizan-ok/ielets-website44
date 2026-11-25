@@ -47,6 +47,13 @@ export function CtaFooter() {
         </div>
       </section>
 
+      <Footer />
+    </>
+  );
+}
+
+export function Footer() {
+  return (
       <footer className="bg-forest-dark text-white mt-auto">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
           <div className="grid gap-10 lg:grid-cols-6">
@@ -87,6 +94,5 @@ export function CtaFooter() {
           </div>
         </div>
       </footer>
-    </>
   );
 }
