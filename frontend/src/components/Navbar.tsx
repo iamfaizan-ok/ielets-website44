@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
   ChevronDown,
   Headphones,
+  LogOut,
   Menu,
   Mic,
   PenLine,
@@ -59,8 +60,15 @@ export function BrandLogo({ light = false }: { light?: boolean }) {
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const isDashboard = pathname?.startsWith("/dashboard");
   const [open, setOpen] = useState(false);
+
+  function handleLogout() {
+    localStorage.removeItem("bandora_user");
+    setOpen(false);
+    router.push("/");
+  }
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -144,18 +152,31 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex shrink-0">
-          <Link
-            href="/login"
-            className="whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="whitespace-nowrap rounded-full bg-amber px-5 py-2 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
-          >
-            Start learning free
-          </Link>
+          {isDashboard ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="whitespace-nowrap rounded-full bg-amber px-5 py-2 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
+              >
+                Start learning free
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -223,20 +244,33 @@ export function Navbar() {
               );
             })}
             <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-border">
-              <Link
-                href="/login"
-                onClick={() => setOpen(false)}
-                className="text-sm font-medium text-ink py-1.5"
-              >
-                Log in
-              </Link>
-              <Link
-                href="/signup"
-                onClick={() => setOpen(false)}
-                className="rounded-full bg-amber px-5 py-2.5 text-center text-sm font-semibold text-white"
-              >
-                Start learning free
-              </Link>
+              {isDashboard ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="text-sm font-medium text-ink py-1.5"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setOpen(false)}
+                    className="rounded-full bg-amber px-5 py-2.5 text-center text-sm font-semibold text-white"
+                  >
+                    Start learning free
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>
