@@ -2,8 +2,23 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { ChevronDown, Menu, X } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  Headphones,
+  Menu,
+  Mic,
+  PenLine,
+  X,
+} from "lucide-react";
 import { NAV_LINKS, PRACTICE_ITEMS } from "@/data/landing";
+
+const PRACTICE_ICONS: Record<string, typeof BookOpen> = {
+  reading: BookOpen,
+  listening: Headphones,
+  writing: PenLine,
+  speaking: Mic,
+};
 
 const NAV_BTN_CLASS =
   "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark hover:text-forest";
@@ -88,17 +103,25 @@ export function Navbar() {
 
             {practiceOpen && (
               <div className="absolute left-0 top-full pt-2.5">
-                <div className="w-44 rounded-xl border border-border bg-surface p-1.5 shadow-md">
-                  {PRACTICE_ITEMS.map((sub) => (
-                    <Link
-                      key={sub.label}
-                      href={sub.href}
-                      onClick={() => setPracticeOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream hover:text-forest"
-                    >
-                      {sub.label}
-                    </Link>
-                  ))}
+                <div className="w-52 rounded-xl border border-border bg-surface p-1.5 shadow-md">
+                  {PRACTICE_ITEMS.map((sub) => {
+                    const Icon = PRACTICE_ICONS[sub.id] ?? BookOpen;
+                    return (
+                      <Link
+                        key={sub.label}
+                        href={sub.href}
+                        onClick={() => setPracticeOpen(false)}
+                        className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream hover:text-forest"
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${sub.badgeBg} ${sub.badgeText}`}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                        </span>
+                        {sub.label}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -157,16 +180,24 @@ export function Navbar() {
             </button>
             {mobilePracticeOpen && (
               <div className="ml-3 flex flex-col gap-1 border-l border-border pl-3 pb-1">
-                {PRACTICE_ITEMS.map((sub) => (
-                  <Link
-                    key={sub.label}
-                    href={sub.href}
-                    onClick={() => setOpen(false)}
-                    className="py-1 text-sm text-muted hover:text-ink"
-                  >
-                    {sub.label}
-                  </Link>
-                ))}
+                {PRACTICE_ITEMS.map((sub) => {
+                  const Icon = PRACTICE_ICONS[sub.id] ?? BookOpen;
+                  return (
+                    <Link
+                      key={sub.label}
+                      href={sub.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 py-1 text-sm font-medium text-muted hover:text-ink"
+                    >
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${sub.badgeBg} ${sub.badgeText}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                      </span>
+                      {sub.label}
+                    </Link>
+                  );
+                })}
               </div>
             )}
 

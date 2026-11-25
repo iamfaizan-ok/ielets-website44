@@ -22,10 +22,34 @@ export interface ResourceItem {
 }
 
 export const PRACTICE_ITEMS = [
-  { label: "Reading", href: "#modules" },
-  { label: "Listening", href: "#modules" },
-  { label: "Writing", href: "#practice" },
-  { label: "Speaking", href: "#practice" },
+  {
+    id: "reading",
+    label: "Reading",
+    href: "#modules",
+    badgeBg: "bg-amber-50",
+    badgeText: "text-amber-700",
+  },
+  {
+    id: "listening",
+    label: "Listening",
+    href: "#modules",
+    badgeBg: "bg-emerald-50",
+    badgeText: "text-emerald-700",
+  },
+  {
+    id: "writing",
+    label: "Writing",
+    href: "#practice",
+    badgeBg: "bg-sky-50",
+    badgeText: "text-sky-700",
+  },
+  {
+    id: "speaking",
+    label: "Speaking",
+    href: "#practice",
+    badgeBg: "bg-rose-50",
+    badgeText: "text-rose-700",
+  },
 ];
 
 export const NAV_LINKS = [
