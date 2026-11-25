@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BookOpen,
   ChevronDown,
@@ -57,6 +58,8 @@ export function BrandLogo({ light = false }: { light?: boolean }) {
 }
 
 export function Navbar() {
+  const pathname = usePathname();
+  const isDashboard = pathname?.startsWith("/dashboard");
   const [open, setOpen] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [mobilePracticeOpen, setMobilePracticeOpen] = useState(false);
@@ -127,15 +130,17 @@ export function Navbar() {
             )}
           </div>
 
-          {NAV_LINKS.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={NAV_BTN_CLASS}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {NAV_LINKS.map((item) => {
+            const label =
+              isDashboard && item.label === "My History"
+                ? "My Progress"
+                : item.label;
+            return (
+              <Link key={item.label} href={item.href} className={NAV_BTN_CLASS}>
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden items-center gap-3 md:flex shrink-0">
@@ -201,16 +206,22 @@ export function Navbar() {
               </div>
             )}
 
-            {NAV_LINKS.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="text-sm font-medium text-ink py-1.5"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map((item) => {
+              const label =
+                isDashboard && item.label === "My History"
+                  ? "My Progress"
+                  : item.label;
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="text-sm font-medium text-ink py-1.5"
+                >
+                  {label}
+                </Link>
+              );
+            })}
             <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-border">
               <Link
                 href="/login"
