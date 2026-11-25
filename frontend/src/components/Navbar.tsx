@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ChevronDown, Menu, X } from "lucide-react";
 import { NAV_LINKS, PRACTICE_ITEMS } from "@/data/landing";
 
+const NAV_BTN_CLASS =
+  "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark hover:text-forest";
+
 export function BrandLogo({ light = false }: { light?: boolean }) {
   return (
     <Link href="/" className="inline-flex items-center gap-2.5 group shrink-0">
@@ -62,13 +65,18 @@ export function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
         <BrandLogo />
 
-        <nav className="hidden items-center gap-5 lg:gap-6 md:flex">
-          <div ref={dropdownRef} className="relative">
+        <nav className="hidden items-center gap-1.5 lg:gap-2 md:flex">
+          <div
+            ref={dropdownRef}
+            className="relative"
+            onMouseEnter={() => setPracticeOpen(true)}
+            onMouseLeave={() => setPracticeOpen(false)}
+          >
             <button
               type="button"
               onClick={() => setPracticeOpen((prev) => !prev)}
               aria-expanded={practiceOpen}
-              className="inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-muted transition-colors hover:text-ink"
+              className={NAV_BTN_CLASS}
             >
               Practice
               <ChevronDown
@@ -79,17 +87,19 @@ export function Navbar() {
             </button>
 
             {practiceOpen && (
-              <div className="absolute left-0 top-full mt-2.5 w-44 rounded-xl border border-border bg-surface p-1.5 shadow-md">
-                {PRACTICE_ITEMS.map((sub) => (
-                  <Link
-                    key={sub.label}
-                    href={sub.href}
-                    onClick={() => setPracticeOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-cream hover:text-forest"
-                  >
-                    {sub.label}
-                  </Link>
-                ))}
+              <div className="absolute left-0 top-full pt-2.5">
+                <div className="w-44 rounded-xl border border-border bg-surface p-1.5 shadow-md">
+                  {PRACTICE_ITEMS.map((sub) => (
+                    <Link
+                      key={sub.label}
+                      href={sub.href}
+                      onClick={() => setPracticeOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream hover:text-forest"
+                    >
+                      {sub.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -98,23 +108,23 @@ export function Navbar() {
             <Link
               key={item.label}
               href={item.href}
-              className="whitespace-nowrap text-sm font-medium text-muted transition-colors hover:text-ink"
+              className={NAV_BTN_CLASS}
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-4 md:flex shrink-0">
+        <div className="hidden items-center gap-3 md:flex shrink-0">
           <Link
             href="#get-started"
-            className="whitespace-nowrap text-sm font-medium text-ink transition-colors hover:text-forest"
+            className="whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark"
           >
             Log in
           </Link>
           <Link
             href="#get-started"
-            className="whitespace-nowrap rounded-full bg-amber px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-amber-hover"
+            className="whitespace-nowrap rounded-full bg-amber px-5 py-2 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
           >
             Start learning free
           </Link>
