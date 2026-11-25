@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #faf8f4;
+  --color-cream-dark: #f2eee6;
+  --color-surface: #ffffff;
+  --color-forest: #113b30;
+  --color-forest-dark: #0b2921;
+  --color-amber: #e8822a;
+  --color-amber-hover: #d4711c;
+  --color-ink: #16231f;
+  --color-muted: #5e6b66;
+  --color-border: #e6e1d6;
+
+  --font-serif: var(--font-serif), Georgia, serif;
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+}
