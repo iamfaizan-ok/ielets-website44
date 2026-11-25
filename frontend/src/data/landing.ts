@@ -21,10 +21,18 @@ export interface ResourceItem {
   href: string;
 }
 
+export const PRACTICE_ITEMS = [
+  { label: "Reading", href: "#modules" },
+  { label: "Listening", href: "#modules" },
+  { label: "Writing", href: "#practice" },
+  { label: "Speaking", href: "#practice" },
+];
+
 export const NAV_LINKS = [
-  { label: "IELTS Prep", href: "#modules" },
-  { label: "Study Guides", href: "#resources" },
   { label: "Mock Exams", href: "#practice" },
+  { label: "AI Tools", href: "#practice" },
+  { label: "Study Guides", href: "#resources" },
+  { label: "My History", href: "#challenge" },
   { label: "Pricing", href: "#get-started" },
 ];
 
