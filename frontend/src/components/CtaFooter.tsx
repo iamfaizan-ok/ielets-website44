@@ -34,7 +34,7 @@ export function CtaFooter() {
 
           <div className="flex flex-col items-start lg:items-end gap-2.5 shrink-0">
             <Link
-              href="#modules"
+              href="/signup"
               className="inline-flex items-center gap-2 rounded-full bg-amber px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-hover"
             >
               Create free account

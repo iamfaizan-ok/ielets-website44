@@ -76,7 +76,7 @@ export function Hero() {
 
           <div className="mt-7 flex flex-wrap items-center gap-3.5">
             <Link
-              href="#get-started"
+              href="/signup"
               className="inline-flex items-center gap-2 rounded-full bg-forest px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-forest-dark"
             >
               Start learning free

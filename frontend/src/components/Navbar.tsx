@@ -140,13 +140,13 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex shrink-0">
           <Link
-            href="#get-started"
+            href="/login"
             className="whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark"
           >
             Log in
           </Link>
           <Link
-            href="#get-started"
+            href="/signup"
             className="whitespace-nowrap rounded-full bg-amber px-5 py-2 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
           >
             Start learning free
@@ -213,14 +213,14 @@ export function Navbar() {
             ))}
             <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-border">
               <Link
-                href="#get-started"
+                href="/login"
                 onClick={() => setOpen(false)}
                 className="text-sm font-medium text-ink py-1.5"
               >
                 Log in
               </Link>
               <Link
-                href="#get-started"
+                href="/signup"
                 onClick={() => setOpen(false)}
                 className="rounded-full bg-amber px-5 py-2.5 text-center text-sm font-semibold text-white"
               >
