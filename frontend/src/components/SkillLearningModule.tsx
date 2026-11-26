@@ -52,7 +52,13 @@ export function SkillLearningModule({
           </div>
 
           <Link
-            href={module.icon === "reading" ? "/reading" : "#modules"}
+            href={
+              module.icon === "reading"
+                ? "/reading"
+                : module.icon === "writing"
+                  ? "/writing"
+                  : "#modules"
+            }
             className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:self-auto"
           >
             <CtaIcon className="h-4 w-4" />

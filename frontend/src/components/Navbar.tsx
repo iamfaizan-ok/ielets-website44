@@ -6,11 +6,15 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
   ChevronDown,
+  Clock,
   Headphones,
   LogOut,
   Menu,
   Mic,
+  Pause,
   PenLine,
+  Play,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { NAV_LINKS, PRACTICE_ITEMS } from "@/data/landing";
@@ -58,11 +62,27 @@ export function BrandLogo({ light = false }: { light?: boolean }) {
   );
 }
 
+const WRITING_EXAM_SECONDS = 60 * 60;
+
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const isDashboard = pathname?.startsWith("/dashboard");
+  const isWriting = pathname?.startsWith("/writing");
   const [open, setOpen] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(WRITING_EXAM_SECONDS);
+  const [timerRunning, setTimerRunning] = useState(false);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = setInterval(() => {
+      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [timerRunning]);
+
+  const timerMins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+  const timerSecs = String(secondsLeft % 60).padStart(2, "0");
 
   function handleLogout() {
     localStorage.removeItem("bandora_user");
@@ -152,7 +172,40 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex shrink-0">
-          {isDashboard ? (
+          {isWriting ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 shadow-2xs">
+              <Clock className="h-3.5 w-3.5 text-forest" />
+              <span className="font-serif text-sm font-bold tabular-nums text-ink">
+                {timerMins}:{timerSecs}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTimerRunning((prev) => !prev)}
+                className="inline-flex items-center gap-1 rounded-full bg-amber px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-amber-hover"
+              >
+                {timerRunning ? (
+                  <>
+                    <Pause className="h-3 w-3" /> Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3 w-3 fill-white" /> Start
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTimerRunning(false);
+                  setSecondsLeft(WRITING_EXAM_SECONDS);
+                }}
+                aria-label="Reset writing timer"
+                className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-cream-dark hover:text-ink"
+              >
+                <RotateCcw className="h-3 w-3" />
+              </button>
+            </div>
+          ) : isDashboard ? (
             <button
               type="button"
               onClick={handleLogout}

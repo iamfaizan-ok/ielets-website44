@@ -39,7 +39,7 @@ export const PRACTICE_ITEMS = [
   {
     id: "writing",
     label: "Writing",
-    href: "#practice",
+    href: "/writing",
     badgeBg: "bg-sky-50",
     badgeText: "text-sky-700",
   },
@@ -101,7 +101,7 @@ export const SKILL_MODULES: SkillModule[] = [
       "Structure Task 1 & Task 2 essays clearly with band-focused feedback.",
     badgeBg: "bg-sky-50",
     badgeText: "text-sky-700",
-    href: "#practice",
+    href: "/writing",
   },
   {
     id: "speaking",
