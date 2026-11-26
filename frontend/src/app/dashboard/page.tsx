@@ -4,7 +4,12 @@ import { DashboardHero } from "@/components/DashboardHero";
 import { ModulesSection } from "@/components/ModulesSection";
 import { SkillLearningModule } from "@/components/SkillLearningModule";
 import { Footer } from "@/components/CtaFooter";
-import { SPEAKING_MODULE, WRITING_MODULE } from "@/data/learningModules";
+import {
+  LISTENING_MODULE,
+  READING_MODULE,
+  SPEAKING_MODULE,
+  WRITING_MODULE,
+} from "@/data/learningModules";
 
 export const metadata: Metadata = {
   title: "Dashboard — Bandora",
@@ -20,6 +25,8 @@ export default function DashboardPage() {
         <ModulesSection />
         <SkillLearningModule module={WRITING_MODULE} />
         <SkillLearningModule module={SPEAKING_MODULE} />
+        <SkillLearningModule module={LISTENING_MODULE} />
+        <SkillLearningModule module={READING_MODULE} />
       </main>
       <Footer />
     </div>

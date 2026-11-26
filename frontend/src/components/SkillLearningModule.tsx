@@ -2,8 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink, Mic, PenLine, Play } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  ExternalLink,
+  Headphones,
+  Mic,
+  PenLine,
+  Play,
+} from "lucide-react";
 import type { SkillLearningConfig } from "@/data/learningModules";
+
+const CTA_ICONS = {
+  writing: PenLine,
+  speaking: Mic,
+  listening: Headphones,
+  reading: BookOpen,
+};
 
 export function SkillLearningModule({
   module,
@@ -14,7 +29,7 @@ export function SkillLearningModule({
   const visibleVideos = showAllVideos
     ? module.videos
     : module.videos.slice(0, 4);
-  const CtaIcon = module.icon === "speaking" ? Mic : PenLine;
+  const CtaIcon = CTA_ICONS[module.icon];
 
   return (
     <section
@@ -46,47 +61,49 @@ export function SkillLearningModule({
         </div>
 
         {/* Famous IELTS Teachers */}
-        <div className="mt-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
-            {module.teachersHeading}
-          </h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {module.teachers.map((teacher) => (
-              <a
-                key={teacher.name}
-                href={teacher.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-start gap-3 rounded-2xl border border-border bg-cream/60 p-3.5 transition-colors hover:border-forest/40 hover:bg-cream"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={teacher.image}
-                  alt={teacher.name}
-                  loading="lazy"
-                  className="h-11 w-11 shrink-0 rounded-xl object-cover bg-cream-dark border border-border"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-ink group-hover:text-forest">
-                    {teacher.name}
-                  </p>
-                  {teacher.badge && (
-                    <span className="mt-0.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-                      {teacher.badge}
+        {module.teachers && module.teachers.length > 0 && (
+          <div className="mt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              {module.teachersHeading}
+            </h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {module.teachers.map((teacher) => (
+                <a
+                  key={teacher.name}
+                  href={teacher.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-3 rounded-2xl border border-border bg-cream/60 p-3.5 transition-colors hover:border-forest/40 hover:bg-cream"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={teacher.image}
+                    alt={teacher.name}
+                    loading="lazy"
+                    className="h-11 w-11 shrink-0 rounded-xl object-cover bg-cream-dark border border-border"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-ink group-hover:text-forest">
+                      {teacher.name}
+                    </p>
+                    {teacher.badge && (
+                      <span className="mt-0.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                        {teacher.badge}
+                      </span>
+                    )}
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted">
+                      {teacher.focus}
+                    </p>
+                    <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-forest">
+                      {teacher.cta ?? "YouTube channel"}
+                      <ExternalLink className="h-3 w-3" />
                     </span>
-                  )}
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted">
-                    {teacher.focus}
-                  </p>
-                  <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-forest">
-                    {teacher.cta ?? "YouTube channel"}
-                    <ExternalLink className="h-3 w-3" />
-                  </span>
-                </div>
-              </a>
-            ))}
+                  </div>
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Top 10 Videos (Compact 2-col grid, expandable so page stays short) */}
         <div className="mt-6">

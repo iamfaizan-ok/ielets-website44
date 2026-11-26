@@ -23,10 +23,10 @@ export interface SkillLearningConfig {
   title: string;
   subtitle: string;
   ctaLabel: string;
-  icon: "writing" | "speaking";
-  teachersHeading: string;
+  icon: "writing" | "speaking" | "listening" | "reading";
+  teachersHeading?: string;
   videosHeading: string;
-  teachers: SkillTeacher[];
+  teachers?: SkillTeacher[];
   videos: SkillVideo[];
 }
 
@@ -307,6 +307,216 @@ export const SPEAKING_MODULE: SkillLearningConfig = {
         "https://images.openai.com/static-rsc-4/HRBTuJoPT9qitmsXxn3nI7wl1OySrAOldsbI2Gmv-DnkwzJsOGxJP_OsqXEd1exy9Ce3CiXPqWVdEpPH8O0HXnMHqottRUQMtBthy6grtoxIH4WJ08H9jVnR9UlBwrSiRbRWfWYFAIX_-CcDyqk4MLqjCJErt1H3g81-vUeK0ss?purpose=inline",
       url: "https://www.youtube.com/results?search_query=IELTS+Speaking+full+test+Part+1+Part+2+Part+3",
       cta: "Practice full test",
+    },
+  ],
+};
+
+export const LISTENING_MODULE: SkillLearningConfig = {
+  id: "listening-module",
+  eyebrow: "3. Listening Learning Module",
+  title: "IELTS Listening — Top 10 Lessons",
+  subtitle:
+    "Master all 4 listening sections, distractors, map labelling, and accent comprehension.",
+  ctaLabel: "Practice Listening",
+  icon: "listening",
+  videosHeading: "Top 10 IELTS Listening Lessons",
+  videos: [
+    {
+      step: 1,
+      title: "Complete IELTS Listening Introduction",
+      badge: "Start here",
+      subtitle: "IELTS Liz – Listening format and essential tips",
+      image:
+        "https://images.openai.com/static-rsc-4/r8mxxMbY0p7AddOaRiZ8eu8mSZzN2-gINDTtDuPs41HcEdFFTbn1NnAU8GZ9gm2KF7LvUfIe6oc4UWJpzPMbTkYyCg7WHcQvDl3JnTuKSMXWdT9XQsPdOz1_c2pIu1xWjDsKB8S3Knfj1UQM21FEurwy7U6pifbQHlPv_A4q1TM?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Liz+Listening+Tips+Essential+Information",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 2,
+      title: "Full IELTS Listening Practice Test",
+      subtitle: "E2 IELTS – Four sections with answers",
+      image:
+        "https://images.openai.com/static-rsc-4/MVlFwfqTIY3LWqrrTAFHxaKa9IgnSFHcoy8llPY2VFS3exKXWNGjOzrUCe6GcuTuo1vdqQWDdtL6om01jT8zopfaOaH5lFwBzkVRBiX6JkJfDjsYMZo0Dp7dvIhjVbUsyg904Wbf2VeJgmPiSRpMZ1q3oQXEL1R5n50eqycukh8?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=E2+IELTS+full+listening+practice+test+with+answers",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 3,
+      title: "Multiple Choice Questions Strategy",
+      subtitle: "Understand distractors and identify correct answers",
+      image:
+        "https://images.openai.com/static-rsc-4/R4e4t2T5rNm4Mg2yfb39_rU_vPsfsKEdde0KdJ1IMUP6LJyEokyI-m9WtJaITD3ilXMYQIfun91ZvLWX9KXUwyI5pNzMbtP6jbeKby-j0l_UGu2X3gkJGokAp2MknX_ieK2422va2K4dNZqnuOEzJOk4A4Nkc3R_khlzsIiO8xY?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Liz+Listening+Multiple+Choice+Strategy",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 4,
+      title: "Map Labelling and Directions",
+      subtitle: "Learn directions, locations and maps",
+      image:
+        "https://images.openai.com/static-rsc-4/2GtQWRbUfluZSnbz6ea9cB3l4zi5QTHx9Iv0Gz21_eOFYnz0I57Fktlv2_GJwRzcUiEHuKioFTlkl5AGrf_db-XyovjayNuvb1guxfpW_hmPWNkM4WPopzY3NS9YMzSO-Qc3Chk6B0H_aR5c9kps0s7NGIFHbGY0KO4mk6FlE3k?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Listening+Map+Labelling+Fastrack+IELTS",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 5,
+      title: "Form and Note Completion",
+      subtitle: "Names, addresses, numbers and missing information",
+      image:
+        "https://images.openai.com/static-rsc-4/Bljl8dv_UxnrKZ5eL8S0F-LBgCg3yvKLQrcWapZKPKTRdocAuy0EnPJnKxUxS5RlzEolY3zbhoWuQSOtGaPhoD8RqvoWyVu-aZ6Kyhu9T905IWig7QTZII8NLsrBNJKOgeNJvLnZkgT4q6a0tox7Sy0o7F0Xo-0Q1lMKRm1UjVo?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Listening+Form+Completion+IELTS+Liz",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 6,
+      title: "Spelling, Numbers and Dates",
+      subtitle: "Avoid spelling and number mistakes",
+      image:
+        "https://images.openai.com/static-rsc-4/3ocsiie_TSBxkm6Gc2nuFpHxPCNDFozfn2KuHTHhnsxylspeXJNh3NY22IivKyRlBVOy-jK27zvANGxwHNogElJL46ApcUrVoiI85JKGTBj4bI66JLlpbDesl4wKo52ioR4ranNX8mmLtBc3KRL8kiXMdcesXs3RIO_Id-tl6QE?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Listening+Spelling+Numbers+Dates+IELTS+Liz",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 7,
+      title: "Sentence Completion Techniques",
+      subtitle: "Predict missing words before listening",
+      image:
+        "https://images.openai.com/static-rsc-4/BioNKFfmbcqf1r5tgJ9aDdn8-8jbqvDg_YZE6XMuJ0ho5j9Ed6-cS1rVXxyvUy_yotBxGXDCGByt2YRCGYSxZnL-JUw8xlmyXyt_FZzieDQnnp4it8I3Fd-p_tyFK5Eubr8UWl5i0sUdV-1fll4FYNu-vSeAl7hpoRyoF0dDnyg?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=E2+IELTS+Listening+Sentence+Completion+strategy",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 8,
+      title: "British, Australian and Other English Accents",
+      subtitle: "Improve your ability to understand different accents",
+      image:
+        "https://images.openai.com/static-rsc-4/qzN6G-tP14x76baklvOUt1uB3wwJz2vJeK672PBOo75puo9PmBI6lATwbxU4N6x2uVl6tqm7nIDeFdBCcdJ4fOZnFGnJtYIlEjc53m3aI-eZLG8OouLtIYVgnGYmz1XWr4wqW9vNENN4iTipGiFXF1PPQ0yqEBRD6JKZo438TJM?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Listening+British+Australian+Accents+Practice",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 9,
+      title: "IELTS Listening – Band 9 Strategies",
+      subtitle: "IELTS Advantage – Improve accuracy and concentration",
+      image:
+        "https://images.openai.com/static-rsc-4/y1U5vl5jy010BgAemPUQBy5NS28B4M8zFe88o_3U1oee2eII3l-yJztWlUg5GhFIIfetjuFsyB8oLrbTlIZYSZbUY4VNhkZcnPrRzoddBwdiGahDqqkzEOj1BsdVu5BuZd9Qtclmm1vESrFpQ636cswOaNZFdUNebYRS1oJ0FxU?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Advantage+Listening+Band+9+strategies",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 10,
+      title: "Complete IELTS Listening Mock Test",
+      badge: "Final practice",
+      subtitle: "All four sections with answer explanations",
+      image:
+        "https://images.openai.com/static-rsc-4/UmsIDsfGj_NPnKeB8iDljmQ_UlVWGFFT53oVCN9tQn8f6GaabijxJc3Jj34pELU_1nDmJDS3KvhhFwloW-lW5f5cHLqqF0BQk2-fWYR1RagyOm-Xm5oRSrYuc3sOPaTE8Gmqe7EcXDPY0hqnztBKS-2k1bYsuUdKgqYI0quI9Yw?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Listening+Full+Mock+Test+4+Sections+with+Answers",
+      cta: "Watch on YouTube",
+    },
+  ],
+};
+
+export const READING_MODULE: SkillLearningConfig = {
+  id: "reading-module",
+  eyebrow: "4. Reading Learning Module",
+  title: "IELTS Reading — Top 10 Lessons",
+  subtitle:
+    "Sharpen skimming, scanning, True/False/Not Given, headings, and 60-minute pacing.",
+  ctaLabel: "Practice Reading",
+  icon: "reading",
+  videosHeading: "Top 10 IELTS Reading Lessons",
+  videos: [
+    {
+      step: 1,
+      title: "How to Reach Band 9 in IELTS Reading",
+      badge: "Start here",
+      subtitle: "IELTS Advantage – Complete reading strategy",
+      image:
+        "https://images.openai.com/static-rsc-4/Ih5XtDHKTRVj9n0K6pNyE3V31FHcirGN9YpL6W3wVcnS3IrQxSmo2hKivFNzrPl64jEmOfAcilfRbqtqAh1uzgQXSzYiO7iB35ThrOpninDLhzypOFh4h8HBPsUzvocfw-oT2vmweoypGb84i426xWeQyqVaFH9_w2yF_TDmM60?purpose=inline",
+      url: "https://www.youtube.com/watch?v=apOCnYpR-9g",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 2,
+      title: "Complete IELTS Academic Reading Test",
+      subtitle: "Asad Yaqub – Step-by-step test solving",
+      image:
+        "https://images.openai.com/static-rsc-4/atGBAmBKSqdpAyLM4UccKmwIhLcp-7QwtJldnb-RkEUBAUIqnNbn_4qLP_2ebAddnyUZDZ8XpjvSolZKN39qAOB2PbYnqqmJqfFX7U3vaKrkuLApuEq77XngWtuOO8J6ljievDOfekPZs_pDsw7au63eU6qdyEo5sU7aPWnz0eI?purpose=inline",
+      url: "https://www.youtube.com/watch?v=1vZix-mNovc",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 3,
+      title: "True / False / Not Given",
+      subtitle: "Learn the differences and avoid common traps",
+      image:
+        "https://images.openai.com/static-rsc-4/7Q1WwTgEkomNZUP9CLlT9XxgH6DEFD7JI33yAyLto8yyOXlB2bb132S-u6Dj6er-rrFYpRq6FOXzAnw_4UTlaqMVPpCsRDHWPCZSheyZHjF5cHDtgUf_8zQKCXFr-p2_CWaMHLKaoz3yBGzO05d1D9rqabQk-ELUtVzR_2NQAhA?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Liz+True+False+Not+Given+complete+lesson",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 4,
+      title: "Matching Headings Strategy",
+      subtitle: "Understand main ideas and paragraph headings",
+      image:
+        "https://images.openai.com/static-rsc-4/j0iC9YJdh7t8tSP-kdjCC9lyHJvGP1586cnXubSpVhGYznnGNkR5McOpv6vrWdRg5Q8LxMfZZqe_7EWeov_tNnntUn5qGZkwuEzbixU5UUVpdftndh6cL-oviDYgvuUe-Em_OvrL8GlAR1vXp0r2mhJhog2KHR7Jv-yNMHw7m_Q?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Advantage+Matching+Headings+Reading",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 5,
+      title: "Skimming and Scanning Techniques",
+      subtitle: "Read efficiently and locate answers faster",
+      image:
+        "https://images.openai.com/static-rsc-4/H_imzs8JuupNnEZzmJTF7I7KTCYVaC1J7f5DRDiXGh4gDtITk-sbhqnDrkSoKmIXTCHji9PYkwj3A49-rj5M20BbbPBaS2fv6Fb592FRz7JnfN7-P6E3c9WS9u7txDdghYKDhU1aGKWnLpz9-rrwQF7XnblPVayMxpiQ0DQ8hcs?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Reading+Skimming+Scanning+IELTS+Advantage",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 6,
+      title: "Multiple Choice Questions",
+      subtitle: "Find correct options and eliminate distractors",
+      image:
+        "https://images.openai.com/static-rsc-4/mHevzPL7yqclTdgANPxPhFcLyzYRlnR4TOgrbEbmY3h785Vmu5lvs-YELvlOadg45uKhmOk4Tanjdjkenu-EEiog2B4g7HgxA_DD0eeOWAe-dQTvovKtEcxNSVhFg5giNt5oI3g099kfirkNdRnwoR_lFtJJ-d984Tph86t6wxU?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=E2+IELTS+Reading+Multiple+Choice+Strategy",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 7,
+      title: "Matching Information",
+      subtitle: "Match information with the correct paragraphs",
+      image:
+        "https://images.openai.com/static-rsc-4/xt010I6PWnUdsRL4ipShSCCrjPQRj1jtTygNB1XWNWzfZazVTO7sCvJe9nLY2FFgRotjCcu-D-edL9m1y_2Uv8p7mf2GAXFZRVGlMDESgQU0eNfftgl7XHqydC4XvAy0eKybiRF1gKYt9212Hf3zHK2ZyQSwYdktldgDN7a6vxc?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Reading+Matching+Information+Fastrack+IELTS",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 8,
+      title: "Summary and Sentence Completion",
+      subtitle: "Understand synonyms and word limits",
+      image:
+        "https://images.openai.com/static-rsc-4/ZvbeMbmbBzdk9y73Wnp0GWr6CzjD61kjQ09kTjad1HHXuYed-j5zz5-mabIGNetiipnY_RMZAXqueWHbamL9lkFvHYBCGviSKvVhE0XbU1rEu5XaZksLD9-EIMiEyWVTblQ4TdQ5f6UCARJ70kvLjsIppHHX-9leKbdMh_Fon2Y?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Reading+Summary+Completion+IELTS+Liz",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 9,
+      title: "Reading Time Management",
+      subtitle: "Complete 40 questions in 60 minutes",
+      image:
+        "https://images.openai.com/static-rsc-4/mUzLi10Pd4YEN_cNxMa7HSxAx6p_LuoCk5JDLXtIUOYJmljHfoZ025-0jz8rroYScCyJ5pACmO83m2GjylFgiKJjqbowUtsJwbUa3zcfYid4slUdodaPOXcZLVuuIvj7SbNcW7NonNtuXacnWiaJWHfkTICYDyiU8bG_IwjEn2g?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=IELTS+Reading+Time+Management+Band+9",
+      cta: "Watch on YouTube",
+    },
+    {
+      step: 10,
+      title: "Full IELTS Academic Reading Mock Test",
+      badge: "Final practice",
+      subtitle: "Three passages, 40 questions and answer explanations",
+      image:
+        "https://images.openai.com/static-rsc-4/yV-6r6It4BgXZwHD-KX4JG7Rwi26jQtUe5ja1aUUpCzjx_Jlfscgrqcm4JIO1bUWipd4irAhpLDIiCLsmAlGBwDsEebC8knzPhXgZ0tPq0MA20Zx5__I_gPUOdoFfYin3kGqyh9Gdytb_iBbOP1XvL5dLk-PvSU4ZLvfg3LFX1k?purpose=inline",
+      url: "https://www.youtube.com/results?search_query=Full+IELTS+Academic+Reading+Mock+Test+with+answers",
+      cta: "Watch on YouTube",
     },
   ],
 };
