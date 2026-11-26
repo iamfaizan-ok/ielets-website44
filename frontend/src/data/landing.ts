@@ -25,7 +25,7 @@ export const PRACTICE_ITEMS = [
   {
     id: "reading",
     label: "Reading",
-    href: "#modules",
+    href: "/reading",
     badgeBg: "bg-amber-50",
     badgeText: "text-amber-700",
   },
@@ -92,7 +92,7 @@ export const SKILL_MODULES: SkillModule[] = [
       "Master skimming, scanning, and timed passages for Academic & General.",
     badgeBg: "bg-amber-50",
     badgeText: "text-amber-700",
-    href: "#practice",
+    href: "/reading",
   },
   {
     id: "writing",
