@@ -53,7 +53,7 @@ export const PRACTICE_ITEMS = [
 ];
 
 export const NAV_LINKS = [
-  { label: "Mock Exams", href: "#practice" },
+  { label: "Daily Mock Exam", href: "#practice" },
   { label: "AI Conversation", href: "#practice" },
   { label: "Study Guides", href: "#resources" },
   { label: "My History", href: "#challenge" },
