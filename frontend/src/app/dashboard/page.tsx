@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { DashboardHero } from "@/components/DashboardHero";
 import { ModulesSection } from "@/components/ModulesSection";
+import { WritingLearningModule } from "@/components/WritingLearningModule";
 import { Footer } from "@/components/CtaFooter";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function DashboardPage() {
       <main className="flex-1">
         <DashboardHero />
         <ModulesSection />
+        <WritingLearningModule />
       </main>
       <Footer />
     </div>
