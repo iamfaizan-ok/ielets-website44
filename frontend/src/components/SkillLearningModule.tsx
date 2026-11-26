@@ -2,33 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ExternalLink, PenLine, Play } from "lucide-react";
-import { WRITING_TEACHERS, WRITING_VIDEOS } from "@/data/writing";
+import { ChevronDown, ExternalLink, Mic, PenLine, Play } from "lucide-react";
+import type { SkillLearningConfig } from "@/data/learningModules";
 
-export function WritingLearningModule() {
+export function SkillLearningModule({
+  module,
+}: {
+  module: SkillLearningConfig;
+}) {
   const [showAllVideos, setShowAllVideos] = useState(false);
   const visibleVideos = showAllVideos
-    ? WRITING_VIDEOS
-    : WRITING_VIDEOS.slice(0, 4);
+    ? module.videos
+    : module.videos.slice(0, 4);
+  const CtaIcon = module.icon === "speaking" ? Mic : PenLine;
 
   return (
     <section
-      id="writing-module"
-      className="mx-auto max-w-6xl px-4 pb-12 sm:px-6"
+      id={module.id}
+      className="mx-auto max-w-6xl px-4 pb-8 sm:px-6"
     >
       <div className="rounded-3xl border border-border bg-surface p-5 sm:p-7">
         {/* Compact Header */}
         <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 sm:flex-row sm:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest">
-              1. Writing Learning Module
+              {module.eyebrow}
             </p>
             <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              IELTS Writing — Learn &amp; Check Writing
+              {module.title}
             </h2>
             <p className="mt-1 text-xs text-muted sm:text-sm">
-              Trusted IELTS teachers and a 10-step video sequence to level up
-              Task 1 &amp; Task 2.
+              {module.subtitle}
             </p>
           </div>
 
@@ -36,18 +40,18 @@ export function WritingLearningModule() {
             href="#modules"
             className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:self-auto"
           >
-            <PenLine className="h-4 w-4" />
-            Check Writing
+            <CtaIcon className="h-4 w-4" />
+            {module.ctaLabel}
           </Link>
         </div>
 
-        {/* Famous IELTS Teachers (Compact 4-card row) */}
+        {/* Famous IELTS Teachers */}
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Famous IELTS Teachers &amp; Channels
+            {module.teachersHeading}
           </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {WRITING_TEACHERS.map((teacher) => (
+            {module.teachers.map((teacher) => (
               <a
                 key={teacher.name}
                 href={teacher.url}
@@ -63,11 +67,9 @@ export function WritingLearningModule() {
                   className="h-11 w-11 shrink-0 rounded-xl object-cover bg-cream-dark border border-border"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="truncate text-xs font-bold text-ink group-hover:text-forest">
-                      {teacher.name}
-                    </p>
-                  </div>
+                  <p className="truncate text-xs font-bold text-ink group-hover:text-forest">
+                    {teacher.name}
+                  </p>
                   {teacher.badge && (
                     <span className="mt-0.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
                       {teacher.badge}
@@ -77,7 +79,7 @@ export function WritingLearningModule() {
                     {teacher.focus}
                   </p>
                   <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-forest">
-                    YouTube channel
+                    {teacher.cta ?? "YouTube channel"}
                     <ExternalLink className="h-3 w-3" />
                   </span>
                 </div>
@@ -90,7 +92,7 @@ export function WritingLearningModule() {
         <div className="mt-6">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Top 10 IELTS Writing Sequence
+              {module.videosHeading}
             </h3>
             <button
               type="button"
