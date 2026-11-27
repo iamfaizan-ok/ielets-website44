@@ -6,7 +6,7 @@ import { Flame } from "lucide-react";
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const WEEKS = ["W1", "W2", "W3", "W4"];
 const STORAGE_KEY = "bandora_writing_tracker";
-const DEFAULT_DAYS: number[] = [0, 1, 3, 7, 9, 10, 14, 15, 17];
+const EMPTY_JSON = "[]";
 
 let listeners: Array<() => void> = [];
 
@@ -18,18 +18,17 @@ function subscribe(cb: () => void) {
 }
 
 function getSnapshot(): string {
-  return localStorage.getItem(STORAGE_KEY) ?? JSON.stringify(DEFAULT_DAYS);
+  return localStorage.getItem(STORAGE_KEY) ?? EMPTY_JSON;
 }
 
 function getServerSnapshot(): string {
-  return JSON.stringify(DEFAULT_DAYS);
+  return EMPTY_JSON;
 }
 
 export function markTodayPracticed() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const current: number[] = raw ? JSON.parse(raw) : DEFAULT_DAYS;
-    // Map current day-of-week (Mon=0..Sun=6) into latest week row (W4: 21..27)
+    const current: number[] = raw ? JSON.parse(raw) : [];
     const jsDay = new Date().getDay();
     const monBased = jsDay === 0 ? 6 : jsDay - 1;
     const todayIdx = 21 + monBased;
@@ -44,19 +43,11 @@ export function markTodayPracticed() {
 
 export function WritingTracker() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  let activeDays: number[] = DEFAULT_DAYS;
+  let activeDays: number[] = [];
   try {
     activeDays = JSON.parse(raw);
   } catch {
-    activeDays = DEFAULT_DAYS;
-  }
-
-  function toggleDay(idx: number) {
-    const next = activeDays.includes(idx)
-      ? activeDays.filter((d) => d !== idx)
-      : [...activeDays, idx];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    listeners.forEach((l) => l());
+    activeDays = [];
   }
 
   return (
@@ -71,7 +62,7 @@ export function WritingTracker() {
         </span>
       </div>
       <p className="mt-1 text-[11px] text-muted">
-        Completed days turn green automatically (or tap to mark).
+        Updates automatically when you submit a test.
       </p>
 
       {/* M T W T F S S header */}
@@ -93,15 +84,16 @@ export function WritingTracker() {
               const idx = rowIdx * 7 + colIdx;
               const done = activeDays.includes(idx);
               return (
-                <button
+                <span
                   key={colIdx}
-                  type="button"
-                  onClick={() => toggleDay(idx)}
-                  aria-label={`Week ${rowIdx + 1} Day ${colIdx + 1}`}
+                  title={done ? "Test completed" : "No test yet"}
+                  aria-label={`Week ${rowIdx + 1} Day ${colIdx + 1}: ${
+                    done ? "completed" : "not completed"
+                  }`}
                   className={`mx-auto h-5 w-5 rounded-full border-2 transition-colors ${
                     done
                       ? "border-forest bg-forest"
-                      : "border-border bg-cream/40 hover:border-forest/50"
+                      : "border-border bg-cream/60"
                   }`}
                 />
               );
