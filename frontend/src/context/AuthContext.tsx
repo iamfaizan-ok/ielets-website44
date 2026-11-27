@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import {
   apiFetch,
   clearTokens,
@@ -44,6 +45,7 @@ interface AuthContextValue {
   verifyOtp: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
   startGoogleAuth: () => Promise<void>;
+  loginWithGoogleCredential: (credential: string) => Promise<void>;
   completeGoogleAuth: (params: {
     code?: string;
     state?: string;
@@ -160,6 +162,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.assign(res.auth_url);
   }, []);
 
+  const loginWithGoogleCredential = useCallback(async (credential: string) => {
+    const res = await apiFetch<{
+      access: string;
+      refresh: string;
+      user: UserProfile;
+    }>("/accounts/google-auth/", {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ credential }),
+    });
+    setTokens(res.access, res.refresh);
+    setUser(res.user);
+  }, []);
+
   const completeGoogleAuth = useCallback(
     async (params: { code?: string; state?: string; error?: string }) => {
       const res = await apiFetch<{
@@ -252,24 +268,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        refreshUser,
-        login,
-        register,
-        verifyOtp,
-        resendOtp,
-        startGoogleAuth,
-        completeGoogleAuth,
-        requestPasswordReset,
-        confirmPasswordReset,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+      <AuthContext.Provider
+        value={{
+          user,
+          loading,
+          refreshUser,
+          login,
+          register,
+          verifyOtp,
+          resendOtp,
+          startGoogleAuth,
+          loginWithGoogleCredential,
+          completeGoogleAuth,
+          requestPasswordReset,
+          confirmPasswordReset,
+          logout,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </GoogleOAuthProvider>
   );
 }
 

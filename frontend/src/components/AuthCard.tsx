@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { GoogleLogin } from "@react-oauth/google";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, Lock, X } from "lucide-react";
 import { consumeReturnUrl, peekReturnUrl, useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/apiClient";
@@ -40,11 +41,12 @@ function GoogleIcon() {
 
 const INPUT_CLASS =
   "mt-1.5 w-full rounded-xl border border-border bg-cream/60 px-3.5 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-forest focus:bg-surface focus:outline-none";
+const GOOGLE_CLIENT_ID = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "").trim();
 
 export function AuthCard({ mode }: AuthCardProps) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const { login, register, resendOtp, startGoogleAuth } = useAuth();
+  const { login, register, resendOtp, startGoogleAuth, loginWithGoogleCredential } = useAuth();
   const returnUrl = useSyncExternalStore(
     emptySubscribe,
     () => peekReturnUrl(),
@@ -161,15 +163,47 @@ export function AuthCard({ mode }: AuthCardProps) {
           </div>
         )}
 
-        <button
-          type="button"
-          disabled={googleLoading}
-          onClick={() => void handleGoogle()}
-          className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {googleLoading ? "Connecting to Google..." : "Continue with Google"}
-        </button>
+        {GOOGLE_CLIENT_ID ? (
+          <div className="mt-6 flex justify-center">
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                if (!credentialResponse.credential) {
+                  setError("Google did not return a valid credential.");
+                  return;
+                }
+                setError("");
+                setGoogleLoading(true);
+                try {
+                  await loginWithGoogleCredential(credentialResponse.credential);
+                  router.push(consumeReturnUrl() || "/dashboard");
+                } catch (err) {
+                  setError(
+                    err instanceof Error ? err.message : "Google sign-in failed."
+                  );
+                } finally {
+                  setGoogleLoading(false);
+                }
+              }}
+              onError={() => {
+                setError("Google sign-in was cancelled or failed.");
+              }}
+              text="continue_with"
+              shape="pill"
+              size="large"
+              width="368"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={googleLoading}
+            onClick={() => void handleGoogle()}
+            className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark disabled:opacity-60"
+          >
+            <GoogleIcon />
+            {googleLoading ? "Connecting to Google..." : "Continue with Google"}
+          </button>
+        )}
 
         <div className="my-5 flex items-center gap-3">
           <span className="h-px flex-1 bg-border" />

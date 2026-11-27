@@ -369,3 +369,35 @@ class IELTSHighConcurrencySecurityTests(APITestCase):
             g_user = User.objects.get(email="googleuser@gmail.com")
             self.assertFalse(g_user.has_usable_password())
             self.assertEqual(g_user.google_sub, "google-sub-123")
+
+        # Direct Google Identity Services ID token endpoint (/api/accounts/google-auth/)
+        with patch("accounts.views.google_id_token.verify_oauth2_token") as mock_verify:
+            mock_verify.side_effect = ValueError("Invalid token")
+            self.assertEqual(
+                self.client.post(
+                    reverse("accounts:google-auth"),
+                    {"credential": "bad-jwt"},
+                    format="json",
+                ).status_code,
+                status.HTTP_401_UNAUTHORIZED,
+            )
+
+            mock_verify.side_effect = None
+            mock_verify.return_value = {
+                "iss": "accounts.google.com",
+                "sub": "google-gis-sub-456",
+                "email": "gisuser@gmail.com",
+                "email_verified": True,
+                "given_name": "GIS",
+                "family_name": "Tester",
+            }
+            gis_res = self.client.post(
+                reverse("accounts:google-auth"),
+                {"credential": "valid-gis-jwt"},
+                format="json",
+            )
+            self.assertEqual(gis_res.status_code, status.HTTP_200_OK)
+            self.assertIn("access", gis_res.data)
+            self.assertIn("refresh", gis_res.data)
+            gis_user = User.objects.get(email="gisuser@gmail.com")
+            self.assertTrue(gis_user.is_verified)

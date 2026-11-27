@@ -1,7 +1,9 @@
-"""Atomic eligibility, credit-locking, refund, and 4-digit Gmail OTP engine."""
+"""Atomic eligibility, credit-locking, refund, Google user provisioning, and 4-digit Gmail OTP engine."""
 
 from datetime import timedelta
+import logging
 import secrets
+import smtplib
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -17,6 +19,53 @@ from .models import EmailOTP, UserActivityLog, log_user_activity
 
 User = get_user_model()
 PRO_DAILY_FAIR_USE_CAP = 50
+logger = logging.getLogger(__name__)
+
+
+def _mask_email(email: str) -> str:
+    local, _, domain = email.partition("@")
+    if not local or not domain:
+        return email
+    return f"{local[:3]}***@{domain}"
+
+
+def get_or_create_google_user(id_info: dict) -> User:
+    """Finds or provisions a verified User from a validated Google ID token payload."""
+    google_sub = id_info["sub"]
+    email = id_info["email"].strip().lower()
+    first_name = id_info.get("given_name", "")[:150]
+    last_name = id_info.get("family_name", "")[:150]
+
+    user = User.objects.filter(google_sub=google_sub).first()
+    if user is not None:
+        return user
+
+    user = User.objects.filter(email=email).first()
+    if user is not None:
+        if not user.is_verified:
+            user.is_verified = True
+        user.google_sub = google_sub
+        user.save(update_fields=["google_sub", "is_verified"])
+        return user
+
+    base = email.split("@")[0][:120]
+    username = base
+    idx = 1
+    while User.objects.filter(username=username).exists():
+        username = f"{base}_{idx}"
+        idx += 1
+    user = User(
+        username=username,
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        google_sub=google_sub,
+        is_verified=True,
+        is_active=True,
+    )
+    user.set_unusable_password()
+    user.save()
+    return user
 
 
 class PaymentRequiredException(APIException):
@@ -73,7 +122,14 @@ def refund_ai_credit(user_id: int, metadata: dict | None = None) -> None:
 
 
 def issue_and_send_email_otp(email: str) -> None:
-    """Generates a cryptographically secure 4-digit OTP, stores its hash, and emails it."""
+    """Generates a cryptographically secure 4-digit OTP, stores its hash, and emails it via SMTP."""
+    if settings.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and (
+        not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD
+    ):
+        raise smtplib.SMTPAuthenticationError(
+            535, b"Gmail SMTP credentials (EMAIL_HOST_USER / EMAIL_HOST_PASSWORD) are not configured."
+        )
+
     code = f"{secrets.randbelow(9000) + 1000}"
     EmailOTP.objects.update_or_create(
         email=email,
@@ -83,6 +139,14 @@ def issue_and_send_email_otp(email: str) -> None:
             "attempts": 0,
         },
     )
+
+    if settings.DEBUG:
+        logger.info(
+            "Dispatching 4-digit OTP via %s:%s to %s",
+            settings.EMAIL_HOST,
+            settings.EMAIL_PORT,
+            _mask_email(email),
+        )
 
     subject = "Your Bandora IELTS 4-Digit Verification Code"
     text_body = (

@@ -2,7 +2,9 @@
 
 import base64
 import hashlib
+import logging
 import secrets
+import smtplib
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -27,9 +29,10 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .models import EmailOTP, UserActivityLog, log_user_activity
 from .permissions import AuthIPRateThrottle
 from .serializers import RegisterSerializer, UserActivityLogSerializer, UserProfileSerializer
-from .services import issue_and_send_email_otp
+from .services import get_or_create_google_user, issue_and_send_email_otp
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 OTP_MAX_ATTEMPTS = 5
 OTP_RESEND_COOLDOWN_SECONDS = 60
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -67,6 +70,50 @@ class GoogleCallbackSerializer(serializers.Serializer):
     code = serializers.CharField(required=False, allow_blank=True)
     state = serializers.CharField(required=False, allow_blank=True)
     error = serializers.CharField(required=False, allow_blank=True)
+
+
+class GoogleCredentialSerializer(serializers.Serializer):
+    credential = serializers.CharField(required=True, allow_blank=False)
+
+
+def _send_otp_or_503(email: str) -> Response | None:
+    try:
+        issue_and_send_email_otp(email)
+    except (smtplib.SMTPException, OSError) as exc:
+        logger.exception("Gmail SMTP dispatch failed for %s: %s", email, exc)
+        return Response(
+            {
+                "detail": (
+                    "Unable to send verification email via Gmail SMTP. "
+                    "Verify EMAIL_HOST_USER and EMAIL_HOST_PASSWORD (16-char Google App Password) on the server."
+                )
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    return None
+
+
+def _get_google_client_id() -> str:
+    return (
+        getattr(settings, "GOOGLE_CLIENT_ID", "")
+        or getattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "")
+    ).strip()
+
+
+def _finalize_google_login(user, request) -> Response:
+    if not user.is_active:
+        return Response({"detail": "Account is disabled."}, status=status.HTTP_403_FORBIDDEN)
+    update_last_login(None, user)
+    log_user_activity(user, UserActivityLog.Action.GOOGLE_AUTH, request)
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": UserProfileSerializer(user).data,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 class SignupView(APIView):
@@ -107,7 +154,8 @@ class SignupView(APIView):
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
 
-        issue_and_send_email_otp(user.email)
+        if smtp_error := _send_otp_or_503(user.email):
+            return smtp_error
         log_user_activity(user, UserActivityLog.Action.REGISTER, request)
         return Response(
             {"email": user.email, "message": "4-digit verification code sent to your Gmail."},
@@ -202,7 +250,8 @@ class ResendOTPView(APIView):
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        issue_and_send_email_otp(email)
+        if smtp_error := _send_otp_or_503(email):
+            return smtp_error
         cache.set(cooldown_key, 1, timeout=OTP_RESEND_COOLDOWN_SECONDS)
         return Response(
             {"email": email, "message": "A new 4-digit code has been sent to your Gmail."},
@@ -270,7 +319,8 @@ class PasswordResetRequestView(APIView):
         email = serializer.validated_data["email"].strip().lower()
         user = User.objects.filter(email=email, is_active=True).first()
         if user:
-            issue_and_send_email_otp(email)
+            if smtp_error := _send_otp_or_503(email):
+                return smtp_error
         return Response(
             {"detail": "If an account exists for this email, a 4-digit reset code has been sent."},
             status=status.HTTP_200_OK,
@@ -326,6 +376,52 @@ class PasswordResetConfirmView(APIView):
         return Response({"detail": "Password reset successful. Please log in."}, status=status.HTTP_200_OK)
 
 
+class GoogleAuthView(APIView):
+    """Cryptographically verifies Google Identity Services ID token (credential) and issues JWTs."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle]
+
+    def post(self, request):
+        client_id = _get_google_client_id()
+        if not client_id:
+            return Response(
+                {
+                    "detail": (
+                        "Google OAuth is not configured on the server. "
+                        "Set GOOGLE_CLIENT_ID in Backend/.env and NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local."
+                    )
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        serializer = GoogleCredentialSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        credential = serializer.validated_data["credential"]
+
+        try:
+            id_info = google_id_token.verify_oauth2_token(
+                credential,
+                google_requests.Request(),
+                client_id,
+            )
+        except Exception as exc:
+            logger.warning("Google ID token verification failed: %s", exc)
+            return Response(
+                {"detail": "Invalid or expired Google credential."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if id_info.get("iss") not in GOOGLE_ISSUERS or not id_info.get("email_verified"):
+            return Response(
+                {"detail": "Google email is not verified."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        user = get_or_create_google_user(id_info)
+        return _finalize_google_login(user, request)
+
+
 class GoogleAuthInitView(APIView):
     """Generates OAuth 2.0 Authorization URL with CSRF state and PKCE S256 challenge."""
 
@@ -333,9 +429,15 @@ class GoogleAuthInitView(APIView):
     throttle_classes = [AuthIPRateThrottle]
 
     def get(self, _request):
-        if not settings.GOOGLE_OAUTH_CLIENT_ID:
+        client_id = _get_google_client_id()
+        if not client_id:
             return Response(
-                {"detail": "Google OAuth is not configured on the server."},
+                {
+                    "detail": (
+                        "Google OAuth is not configured on the server. "
+                        "Set GOOGLE_CLIENT_ID in Backend/.env and NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local."
+                    )
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
@@ -346,7 +448,7 @@ class GoogleAuthInitView(APIView):
 
         cache.set(f"google_oauth_state:{state}", code_verifier, timeout=300)
         params = {
-            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "client_id": client_id,
             "redirect_uri": settings.GOOGLE_OAUTH_REDIRECT_URI,
             "response_type": "code",
             "scope": "openid email profile",
@@ -386,12 +488,13 @@ class GoogleAuthCallbackView(APIView):
             )
         cache.delete(f"google_oauth_state:{state}")
 
+        client_id = _get_google_client_id()
         try:
             token_res = http_requests.post(
                 GOOGLE_TOKEN_URL,
                 data={
                     "code": code,
-                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                    "client_id": client_id,
                     "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
                     "redirect_uri": settings.GOOGLE_OAUTH_REDIRECT_URI,
                     "grant_type": "authorization_code",
@@ -410,7 +513,7 @@ class GoogleAuthCallbackView(APIView):
             id_info = google_id_token.verify_oauth2_token(
                 raw_id_token,
                 google_requests.Request(),
-                settings.GOOGLE_OAUTH_CLIENT_ID,
+                client_id,
             )
         except Exception:
             return Response(
@@ -424,53 +527,8 @@ class GoogleAuthCallbackView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        google_sub = id_info["sub"]
-        email = id_info["email"].strip().lower()
-        first_name = id_info.get("given_name", "")[:150]
-        last_name = id_info.get("family_name", "")[:150]
-
-        user = User.objects.filter(google_sub=google_sub).first()
-        if user is None:
-            # Link only to existing account with verified email; never store Google password
-            user = User.objects.filter(email=email).first()
-            if user is not None:
-                if not user.is_verified:
-                    user.is_verified = True
-                user.google_sub = google_sub
-                user.save(update_fields=["google_sub", "is_verified"])
-            else:
-                base = email.split("@")[0][:120]
-                username = base
-                idx = 1
-                while User.objects.filter(username=username).exists():
-                    username = f"{base}_{idx}"
-                    idx += 1
-                user = User(
-                    username=username,
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    google_sub=google_sub,
-                    is_verified=True,
-                    is_active=True,
-                )
-                user.set_unusable_password()
-                user.save()
-
-        if not user.is_active:
-            return Response({"detail": "Account is disabled."}, status=status.HTTP_403_FORBIDDEN)
-
-        update_last_login(None, user)
-        log_user_activity(user, UserActivityLog.Action.GOOGLE_AUTH, request)
-        refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
-                "user": UserProfileSerializer(user).data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        user = get_or_create_google_user(id_info)
+        return _finalize_google_login(user, request)
 
 
 class LogoutView(APIView):
@@ -513,6 +571,7 @@ __all__ = [
     "AuditedTokenObtainPairView",
     "PasswordResetRequestView",
     "PasswordResetConfirmView",
+    "GoogleAuthView",
     "GoogleAuthInitView",
     "GoogleAuthCallbackView",
     "TokenRefreshView",
