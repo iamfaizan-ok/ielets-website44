@@ -8,13 +8,18 @@ from .views import (
     AuditedTokenObtainPairView,
     LogoutView,
     ProfileView,
-    RegisterView,
+    ResendOTPView,
+    SignupView,
+    VerifyOTPView,
 )
 
 app_name = "accounts"
 
 urlpatterns = [
-    path("register/", RegisterView.as_view(), name="register"),
+    path("signup/", SignupView.as_view(), name="signup"),
+    path("register/", SignupView.as_view(), name="register"),
+    path("verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),
+    path("resend-otp/", ResendOTPView.as_view(), name="resend-otp"),
     path("login/", AuditedTokenObtainPairView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),

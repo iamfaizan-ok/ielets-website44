@@ -38,7 +38,9 @@ interface AuthContextValue {
     name: string;
     email: string;
     password: string;
-  }) => Promise<void>;
+  }) => Promise<{ email: string; message: string }>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -125,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const last_name = parts.slice(1).join(" ");
       const username = email.split("@")[0].replace(/[^a-zA-Z0-9_.-]/g, "_");
 
-      await apiFetch("/accounts/register/", {
+      return apiFetch<{ email: string; message: string }>("/accounts/signup/", {
         method: "POST",
         auth: false,
         body: JSON.stringify({
@@ -136,10 +138,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
         }),
       });
-      await login(username, password);
     },
-    [login]
+    []
   );
+
+  const verifyOtp = useCallback(async (email: string, otp: string) => {
+    const res = await apiFetch<{
+      valid: boolean;
+      access: string;
+      refresh: string;
+      user: UserProfile;
+    }>("/accounts/verify-otp/", {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ email, otp }),
+    });
+    setTokens(res.access, res.refresh);
+    setUser(res.user);
+  }, []);
+
+  const resendOtp = useCallback(async (email: string) => {
+    await apiFetch("/accounts/resend-otp/", {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ email }),
+    });
+  }, []);
 
   const logout = useCallback(async () => {
     const refresh = getRefreshToken();
@@ -160,7 +184,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, refreshUser, login, register, logout }}
+      value={{
+        user,
+        loading,
+        refreshUser,
+        login,
+        register,
+        verifyOtp,
+        resendOtp,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

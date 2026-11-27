@@ -3,9 +3,10 @@
 import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Lock, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Lock, X } from "lucide-react";
 import { consumeReturnUrl, peekReturnUrl, useAuth } from "@/context/AuthContext";
 import { BrandLogo } from "./Navbar";
+import { OtpModal } from "./OtpModal";
 
 const emptySubscribe = () => () => {};
 
@@ -57,6 +58,8 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
+  const [verifiedToast, setVerifiedToast] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -82,10 +85,15 @@ export function AuthCard({ mode }: AuthCardProps) {
     setSubmitting(true);
     try {
       if (isSignup) {
-        await register({ name: name.trim(), email: email.trim(), password });
-      } else {
-        await login(email.trim(), password);
+        const res = await register({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+        });
+        setOtpEmail(res.email);
+        return;
       }
+      await login(email.trim(), password);
       router.push(consumeReturnUrl() || "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
@@ -268,6 +276,16 @@ export function AuthCard({ mode }: AuthCardProps) {
           </button>
         </form>
 
+        {verifiedToast && (
+          <div
+            role="status"
+            className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-900"
+          >
+            <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+            Email verified! Welcome
+          </div>
+        )}
+
         <p className="mt-6 text-center text-xs text-muted">
           {isSignup ? "Already have an account?" : "New to Bandora?"}{" "}
           <Link
@@ -278,6 +296,20 @@ export function AuthCard({ mode }: AuthCardProps) {
           </Link>
         </p>
       </div>
+
+      {otpEmail && (
+        <OtpModal
+          email={otpEmail}
+          onClose={() => setOtpEmail(null)}
+          onSuccess={() => {
+            setOtpEmail(null);
+            setVerifiedToast(true);
+            setTimeout(() => {
+              router.push(consumeReturnUrl() || "/dashboard");
+            }, 600);
+          }}
+        />
+      )}
     </main>
   );
 }

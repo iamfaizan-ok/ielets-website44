@@ -41,6 +41,7 @@ class User(AbstractUser):
 class UserActivityLog(models.Model):
     class Action(models.TextChoices):
         REGISTER = "REGISTER", "Register"
+        EMAIL_VERIFIED = "EMAIL_VERIFIED", "Email Verified"
         LOGIN = "LOGIN", "Login"
         LOGOUT = "LOGOUT", "Logout"
         SUBMIT_TEST = "SUBMIT_TEST", "Submit Test"
@@ -63,6 +64,17 @@ class UserActivityLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} · {self.action} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class EmailOTP(models.Model):
+    email = models.EmailField(unique=True, db_index=True)
+    otp_hash = models.CharField(max_length=255)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"OTP({self.email}, attempts={self.attempts})"
 
 
 def get_client_ip(request) -> str | None:

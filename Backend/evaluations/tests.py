@@ -1,15 +1,18 @@
 """Security & concurrency tests: IDOR, anti-cheat timer, atomic credit lock, refund, payload guard, throttling."""
 
+import re
 import time
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from accounts.models import EmailOTP
 from accounts.services import PaymentRequiredException, verify_and_deduct_ai_credit
 from evaluations.models import TestAttempt
 from evaluations.tasks import process_writing_evaluation
@@ -161,3 +164,55 @@ class IELTSHighConcurrencySecurityTests(APITestCase):
             self.assertNotEqual(res.status_code, status.HTTP_429_TOO_MANY_REQUESTS, f"Throttled early at {i}")
         throttled = self.client.post(url, {"username": "nope", "password": "wrong"})
         self.assertEqual(throttled.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_4_digit_otp_signup_lockout_and_verification(self):
+        mail.outbox.clear()
+        signup_res = self.client.post(
+            reverse("accounts:signup"),
+            {
+                "username": "otp_user",
+                "email": "otp_user@gmail.com",
+                "first_name": "Faizan",
+                "password": "StrongPass123!",
+            },
+            format="json",
+        )
+        self.assertEqual(signup_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 1)
+        match = re.search(r"\b(\d{4})\b", mail.outbox[0].body)
+        self.assertIsNotNone(match)
+        real_otp = match.group(1)
+
+        # OTP must be hashed, never stored in plaintext
+        otp_row = EmailOTP.objects.get(email="otp_user@gmail.com")
+        self.assertNotEqual(otp_row.otp_hash, real_otp)
+
+        # Unverified user cannot log in yet
+        login_blocked = self.client.post(
+            reverse("accounts:login"),
+            {"username": "otp_user", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(login_blocked.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Wrong OTP rejected
+        wrong_otp = "0000" if real_otp != "0000" else "9999"
+        bad_res = self.client.post(
+            reverse("accounts:verify-otp"),
+            {"email": "otp_user@gmail.com", "otp": wrong_otp},
+            format="json",
+        )
+        self.assertEqual(bad_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(bad_res.data["valid"])
+
+        # Valid 4-digit OTP issues JWT tokens & verifies user
+        ok_res = self.client.post(
+            reverse("accounts:verify-otp"),
+            {"email": "otp_user@gmail.com", "otp": real_otp},
+            format="json",
+        )
+        self.assertEqual(ok_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(ok_res.data["valid"])
+        self.assertIn("access", ok_res.data)
+        self.assertTrue(User.objects.get(email="otp_user@gmail.com").is_verified)
