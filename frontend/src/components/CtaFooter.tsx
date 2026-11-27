@@ -52,47 +52,78 @@ export function CtaFooter() {
   );
 }
 
+const FOOTER_LINK_HREFS: Record<string, string> = {
+  Reading: "/reading",
+  Writing: "/writing",
+  Listening: "/dashboard#listening-module",
+  Speaking: "/dashboard#speaking-module",
+  "Daily Challenge": "/dashboard",
+  "IELTS Guide": "/writing",
+  "Study Tips": "/reading",
+  Vocabulary: "/dashboard",
+};
+
 export function Footer() {
   return (
-      <footer className="bg-forest-dark text-white mt-auto">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-          <div className="grid gap-10 lg:grid-cols-6">
-            <div className="lg:col-span-2">
-              <BrandLogo light />
-              <p className="mt-4 max-w-xs text-sm leading-relaxed text-emerald-100/75">
-                Better English. Bigger ambitions. Calm, focused IELTS practice
-                designed for everyday progress.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-4">
-              {FOOTER_COLUMNS.map((col) => (
-                <div key={col.heading}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-200/70">
-                    {col.heading}
-                  </h3>
-                  <ul className="mt-4 space-y-2.5">
-                    {col.links.map((label) => (
-                      <li key={label}>
-                        <Link
-                          href="#modules"
-                          className="text-sm text-emerald-100/80 transition-colors hover:text-white"
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+    <footer className="mt-auto border-t border-white/10 bg-forest-dark text-white">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <div className="grid gap-10 lg:grid-cols-6">
+          <div className="lg:col-span-2">
+            <BrandLogo light />
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-emerald-100/75">
+              Better English. Bigger ambitions. Calm, focused IELTS practice
+              designed for everyday progress.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/reading"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-emerald-100 transition-colors hover:bg-white/15"
+              >
+                Reading
+              </Link>
+              <Link
+                href="/writing"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-emerald-100 transition-colors hover:bg-white/15"
+              >
+                Writing
+              </Link>
+              <Link
+                href="/dashboard"
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-emerald-100 transition-colors hover:bg-white/15"
+              >
+                Dashboard
+              </Link>
             </div>
           </div>
 
-          <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-emerald-200/60 sm:flex-row sm:items-center">
-            <p>© 2026 Bandora. All rights reserved.</p>
-            <p>Built for focused IELTS preparation.</p>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4 lg:col-span-4">
+            {FOOTER_COLUMNS.map((col) => (
+              <div key={col.heading}>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-amber">
+                  {col.heading}
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {col.links.map((label) => (
+                    <li key={label}>
+                      <Link
+                        href={FOOTER_LINK_HREFS[label] ?? "/dashboard"}
+                        className="text-sm text-emerald-100/80 transition-colors hover:text-white"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
-      </footer>
+
+        <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-6 text-xs text-emerald-200/65 sm:flex-row sm:items-center">
+          <p>© 2026 Bandora. All rights reserved.</p>
+          <p>Built for focused IELTS preparation.</p>
+        </div>
+      </div>
+    </footer>
   );
 }
