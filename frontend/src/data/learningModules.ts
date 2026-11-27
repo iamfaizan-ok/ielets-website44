@@ -549,17 +549,13 @@ export function getLessonBySlug(slug: string) {
   return null;
 }
 
-export function toYoutubeEmbedUrl(url: string): string {
+export function toYoutubeEmbedUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
     const v = parsed.searchParams.get("v");
     if (v) return `https://www.youtube.com/embed/${v}?rel=0`;
-    const q = parsed.searchParams.get("search_query");
-    if (q) {
-      return `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(q)}`;
-    }
   } catch {
-    // Fallback to original URL
+    // Invalid URL
   }
-  return url;
+  return null;
 }

@@ -52,6 +52,18 @@ export default async function LessonPage({
   const { module, video, moreVideos } = found;
   const embedUrl = toYoutubeEmbedUrl(video.url);
   const ieltsNote = IELTS_MODULE_NOTES[module.icon] ?? module.subtitle;
+  const backHref =
+    module.icon === "writing"
+      ? "/writing"
+      : module.icon === "reading"
+        ? "/reading"
+        : "/dashboard";
+  const backLabel =
+    module.icon === "writing"
+      ? "Back to Writing"
+      : module.icon === "reading"
+        ? "Back to Reading"
+        : "Back to Dashboard";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -60,11 +72,11 @@ export default async function LessonPage({
       <main className="flex-1 mx-auto w-full max-w-6xl px-4 pt-6 pb-14 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href="/dashboard"
+            href={backHref}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-forest hover:text-amber transition-colors sm:text-sm"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            {backLabel}
           </Link>
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-forest">
             {module.eyebrow} · Lesson {String(video.step).padStart(2, "0")}
@@ -83,16 +95,37 @@ export default async function LessonPage({
             {ieltsNote}
           </p>
 
-          {/* Embedded YouTube Player */}
-          <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-forest-dark aspect-video">
-            <iframe
-              src={embedUrl}
-              title={video.title}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="h-full w-full"
-            />
-          </div>
+          {/* Embedded YouTube Player or Clean Playlist Card */}
+          {embedUrl ? (
+            <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-forest-dark aspect-video">
+              <iframe
+                src={embedUrl}
+                title={video.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full"
+              />
+            </div>
+          ) : (
+            <div className="mt-6 relative overflow-hidden rounded-2xl border border-border bg-forest-dark aspect-video flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={video.image}
+                alt={video.title}
+                className="absolute inset-0 h-full w-full object-cover opacity-40"
+              />
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative z-10 inline-flex items-center gap-2.5 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 hover:bg-amber-hover"
+              >
+                <Play className="h-4 w-4 fill-white" />
+                Watch Lesson on YouTube
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          )}
 
           {/* Video Details Bar */}
           <div className="mt-5 flex flex-col justify-between gap-3 border-t border-border pt-4 sm:flex-row sm:items-center">
