@@ -50,6 +50,24 @@ class IELTSHighConcurrencySecurityTests(APITestCase):
             content={"task1": "Bar chart", "task2": "Public libraries essay"},
         )
 
+    def test_unauthenticated_guests_receive_401(self):
+        self.assertEqual(
+            self.client.get(reverse("exams:next-exam", kwargs={"module": "reading"})).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.get(reverse("exams:lesson-detail", kwargs={"slug": "writing-1"})).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.get(reverse("exams:teacher-links")).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.get(reverse("evaluations:history-list")).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
     def test_anti_cheat_idor_and_server_timer(self):
         self.client.force_authenticate(user=self.user_a)
 

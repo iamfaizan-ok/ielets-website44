@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, X } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { ArrowRight, Eye, EyeOff, Lock, X } from "lucide-react";
+import { consumeReturnUrl, peekReturnUrl, useAuth } from "@/context/AuthContext";
 import { BrandLogo } from "./Navbar";
+
+const emptySubscribe = () => () => {};
 
 interface AuthCardProps {
   mode: "login" | "signup";
@@ -41,6 +43,11 @@ export function AuthCard({ mode }: AuthCardProps) {
   const isSignup = mode === "signup";
   const router = useRouter();
   const { login, register } = useAuth();
+  const returnUrl = useSyncExternalStore(
+    emptySubscribe,
+    () => peekReturnUrl(),
+    () => null
+  );
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -79,7 +86,7 @@ export function AuthCard({ mode }: AuthCardProps) {
       } else {
         await login(email.trim(), password);
       }
-      router.push("/dashboard");
+      router.push(consumeReturnUrl() || "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
     } finally {
@@ -108,6 +115,16 @@ export function AuthCard({ mode }: AuthCardProps) {
             ? "Start practicing IELTS with daily 15-minute goals."
             : "Log in to continue your IELTS preparation."}
         </p>
+
+        {returnUrl && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-950">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber" />
+            <span>
+              Create a free account to unlock full IELTS practice tests and
+              video lessons.
+            </span>
+          </div>
+        )}
 
         <button
           type="button"

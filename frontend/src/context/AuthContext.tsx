@@ -173,13 +173,45 @@ export function useAuth() {
   return ctx;
 }
 
+const RETURN_URL_KEY = "bandora_return_url";
+
+export function isSafeInternalPath(path: string | null): path is string {
+  return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
+}
+
+export function saveReturnUrl(url: string) {
+  if (typeof window === "undefined" || !isSafeInternalPath(url)) return;
+  sessionStorage.setItem(RETURN_URL_KEY, url);
+}
+
+export function peekReturnUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const param = new URLSearchParams(window.location.search).get("next");
+  if (isSafeInternalPath(param)) return param;
+  const stored = sessionStorage.getItem(RETURN_URL_KEY);
+  return isSafeInternalPath(stored) ? stored : null;
+}
+
+export function consumeReturnUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const target = peekReturnUrl();
+  sessionStorage.removeItem(RETURN_URL_KEY);
+  return target;
+}
+
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/login");
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : "";
+      if (currentPath) saveReturnUrl(currentPath);
+      const nextParam = currentPath
+        ? `?next=${encodeURIComponent(currentPath)}`
+        : "";
+      router.replace(`/signup${nextParam}`);
     }
   }, [loading, user, router]);
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { RequireAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { WritingExamRunner } from "@/components/WritingExamRunner";
 import { WritingReport } from "@/components/WritingReport";
@@ -28,8 +29,10 @@ export default async function WritingTestPage({
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <WritingExamRunner test={test} />
-        <WritingReport />
+        <RequireAuth>
+          <WritingExamRunner test={test} />
+          <WritingReport />
+        </RequireAuth>
       </main>
       <Footer />
     </div>

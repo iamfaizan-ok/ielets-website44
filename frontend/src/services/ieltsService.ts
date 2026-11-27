@@ -150,6 +150,16 @@ export function fetchUserAnalytics() {
   return apiFetch<UserAnalytics>("/evaluations/analytics/");
 }
 
+export function fetchProtectedLesson(slug: string) {
+  return apiFetch<{ slug: string; title: string; youtube_url: string }>(
+    `/exams/lessons/${slug}/`
+  );
+}
+
+export function fetchProtectedTeachers() {
+  return apiFetch<{ teachers: Record<string, string> }>("/exams/teachers/");
+}
+
 export function useEvaluationPolling(attemptId: number | null) {
   const [status, setStatus] = useState<"IDLE" | "PROCESSING" | "COMPLETED" | "FAILED">(
     attemptId ? "PROCESSING" : "IDLE"

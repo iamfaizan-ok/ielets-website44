@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowRight, BookOpen, Headphones, Mic, PenLine } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, BookOpen, Headphones, Lock, Mic, PenLine } from "lucide-react";
+import { saveReturnUrl, useAuth } from "@/context/AuthContext";
 import { SKILL_MODULES } from "@/data/landing";
 
 const MODULE_ICONS: Record<string, typeof Headphones> = {
@@ -10,6 +14,15 @@ const MODULE_ICONS: Record<string, typeof Headphones> = {
 };
 
 export function ModulesSection() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  function handleLockedClick(target: string) {
+    const dest = target.startsWith("/") ? target : "/dashboard";
+    saveReturnUrl(dest);
+    router.push(`/signup?next=${encodeURIComponent(dest)}`);
+  }
+
   return (
     <section id="modules" className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-6 sm:pt-10 sm:pb-14">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -53,13 +66,25 @@ export function ModulesSection() {
                 </p>
               </div>
 
-              <Link
-                href={mod.href}
-                className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-ink group-hover:text-amber transition-colors"
-              >
-                Start practicing
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              {user ? (
+                <Link
+                  href={mod.href}
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-ink group-hover:text-amber transition-colors"
+                >
+                  Start practicing
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleLockedClick(mod.href)}
+                  className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-ink group-hover:text-amber transition-colors"
+                >
+                  <Lock className="h-3.5 w-3.5 text-amber" />
+                  Start practicing
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              )}
             </article>
           );
         })}

@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from evaluations.models import TestAttempt
 
+from .lessons import PROTECTED_LESSONS, PROTECTED_TEACHER_URLS
 from .models import IELTSTest, Question
 from .serializers import IELTSTestSummarySerializer, IELTSTestTakeSerializer
 from .services import (
@@ -125,3 +126,24 @@ class PresignedUploadUrlView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(data, status=status.HTTP_200_OK)
+
+
+class ProtectedLessonDetailView(APIView):
+    """Returns protected YouTube video URLs ONLY to authenticated users (401 for guests)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, _request, slug: str):
+        lesson = PROTECTED_LESSONS.get(slug)
+        if not lesson:
+            return Response({"detail": "Lesson not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"slug": slug, **lesson})
+
+
+class ProtectedTeacherLinksView(APIView):
+    """Returns protected YouTube channel URLs ONLY to authenticated users (401 for guests)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, _request):
+        return Response({"teachers": PROTECTED_TEACHER_URLS})

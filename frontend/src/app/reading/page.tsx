@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { ReadingHero } from "@/components/ReadingHero";
 import { ReadingWorkspace } from "@/components/ReadingWorkspace";
@@ -15,8 +16,10 @@ export default function ReadingPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <ReadingHero />
-        <ReadingWorkspace />
+        <RequireAuth>
+          <ReadingHero />
+          <ReadingWorkspace />
+        </RequireAuth>
       </main>
       <Footer />
     </div>

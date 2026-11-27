@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RequireAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { WritingLibrary } from "@/components/WritingLibrary";
 import { WritingReport } from "@/components/WritingReport";
@@ -17,14 +18,16 @@ export default function WritingPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        <WritingLibrary />
-        <WritingReport />
-        <SkillLearningModule
-          module={WRITING_MODULE}
-          eyebrowOverride="More Learn About Writing in IELTS"
-          titleOverride="Learn IELTS Writing from Top Teachers"
-          showCta={false}
-        />
+        <RequireAuth>
+          <WritingLibrary />
+          <WritingReport />
+          <SkillLearningModule
+            module={WRITING_MODULE}
+            eyebrowOverride="More Learn About Writing in IELTS"
+            titleOverride="Learn IELTS Writing from Top Teachers"
+            showCta={false}
+          />
+        </RequireAuth>
       </main>
       <Footer />
     </div>
