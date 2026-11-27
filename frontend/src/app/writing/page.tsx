@@ -16,7 +16,7 @@ export default function WritingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex-1 pb-8">
+      <main className="flex-1">
         <WritingLibrary />
         <WritingReport />
         <SkillLearningModule
