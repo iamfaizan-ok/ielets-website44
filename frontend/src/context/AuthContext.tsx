@@ -33,14 +33,29 @@ interface AuthContextValue {
   user: UserProfile | null;
   loading: boolean;
   refreshUser: () => Promise<void>;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (payload: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
+    confirmPassword: string;
   }) => Promise<{ email: string; message: string }>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
+  startGoogleAuth: () => Promise<void>;
+  completeGoogleAuth: (params: {
+    code?: string;
+    state?: string;
+    error?: string;
+  }) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<string>;
+  confirmPasswordReset: (payload: {
+    email: string;
+    otp: string;
+    password: string;
+    confirmPassword: string;
+  }) => Promise<string>;
   logout: () => Promise<void>;
 }
 
@@ -94,16 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (usernameOrEmail: string, password: string) => {
-      const username = usernameOrEmail.includes("@")
-        ? usernameOrEmail.split("@")[0]
-        : usernameOrEmail;
+    async (email: string, password: string) => {
       const tokens = await apiFetch<{ access: string; refresh: string }>(
         "/accounts/login/",
         {
           method: "POST",
           auth: false,
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
         }
       );
       setTokens(tokens.access, tokens.refresh);
@@ -114,30 +126,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async ({
-      name,
+      firstName,
+      lastName,
       email,
       password,
+      confirmPassword,
     }: {
-      name: string;
+      firstName: string;
+      lastName: string;
       email: string;
       password: string;
+      confirmPassword: string;
     }) => {
-      const parts = name.trim().split(/\s+/);
-      const first_name = parts[0] || "";
-      const last_name = parts.slice(1).join(" ");
-      const username = email.split("@")[0].replace(/[^a-zA-Z0-9_.-]/g, "_");
-
       return apiFetch<{ email: string; message: string }>("/accounts/signup/", {
         method: "POST",
         auth: false,
         body: JSON.stringify({
-          username,
-          email,
-          first_name,
-          last_name,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: email.trim().toLowerCase(),
           password,
+          confirm_password: confirmPassword,
         }),
       });
+    },
+    []
+  );
+
+  const startGoogleAuth = useCallback(async () => {
+    const res = await apiFetch<{ auth_url: string }>("/accounts/google/url/", {
+      auth: false,
+    });
+    window.location.assign(res.auth_url);
+  }, []);
+
+  const completeGoogleAuth = useCallback(
+    async (params: { code?: string; state?: string; error?: string }) => {
+      const res = await apiFetch<{
+        access: string;
+        refresh: string;
+        user: UserProfile;
+      }>("/accounts/google/callback/", {
+        method: "POST",
+        auth: false,
+        body: JSON.stringify(params),
+      });
+      setTokens(res.access, res.refresh);
+      setUser(res.user);
+    },
+    []
+  );
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const res = await apiFetch<{ detail: string }>("/accounts/password-reset/", {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    });
+    return res.detail;
+  }, []);
+
+  const confirmPasswordReset = useCallback(
+    async (payload: {
+      email: string;
+      otp: string;
+      password: string;
+      confirmPassword: string;
+    }) => {
+      const res = await apiFetch<{ detail: string }>(
+        "/accounts/password-reset/confirm/",
+        {
+          method: "POST",
+          auth: false,
+          body: JSON.stringify({
+            email: payload.email.trim().toLowerCase(),
+            otp: payload.otp,
+            password: payload.password,
+            confirm_password: payload.confirmPassword,
+          }),
+        }
+      );
+      return res.detail;
     },
     []
   );
@@ -192,6 +261,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         verifyOtp,
         resendOtp,
+        startGoogleAuth,
+        completeGoogleAuth,
+        requestPasswordReset,
+        confirmPasswordReset,
         logout,
       }}
     >

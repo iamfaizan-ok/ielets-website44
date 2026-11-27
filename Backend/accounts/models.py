@@ -14,6 +14,9 @@ class User(AbstractUser):
     supabase_uid = models.CharField(
         max_length=64, unique=True, null=True, blank=True, db_index=True
     )
+    google_sub = models.CharField(
+        max_length=64, unique=True, null=True, blank=True, db_index=True
+    )
     plan_tier = models.CharField(
         max_length=10, choices=PlanTier.choices, default=PlanTier.FREE
     )
@@ -43,6 +46,8 @@ class UserActivityLog(models.Model):
         REGISTER = "REGISTER", "Register"
         EMAIL_VERIFIED = "EMAIL_VERIFIED", "Email Verified"
         LOGIN = "LOGIN", "Login"
+        GOOGLE_AUTH = "GOOGLE_AUTH", "Google OAuth"
+        PASSWORD_RESET = "PASSWORD_RESET", "Password Reset"
         LOGOUT = "LOGOUT", "Logout"
         SUBMIT_TEST = "SUBMIT_TEST", "Submit Test"
         CREDIT_DEDUCTED = "CREDIT_DEDUCTED", "AI Credit Deducted"

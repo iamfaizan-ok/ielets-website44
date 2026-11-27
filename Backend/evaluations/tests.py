@@ -216,3 +216,156 @@ class IELTSHighConcurrencySecurityTests(APITestCase):
         self.assertTrue(ok_res.data["valid"])
         self.assertIn("access", ok_res.data)
         self.assertTrue(User.objects.get(email="otp_user@gmail.com").is_verified)
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+        GOOGLE_OAUTH_CLIENT_ID="test-client-id",
+        GOOGLE_OAUTH_CLIENT_SECRET="test-client-secret",
+    )
+    def test_auth_security_matrix_and_google_oauth(self):
+        # Weak password & duplicate email/username checks
+        weak = self.client.post(
+            reverse("accounts:signup"),
+            {"email": "weak@gmail.com", "password": "123", "confirm_password": "123"},
+            format="json",
+        )
+        self.assertEqual(weak.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.user_a.is_verified = True
+        self.user_a.save(update_fields=["is_verified"])
+        dup_email = self.client.post(
+            reverse("accounts:signup"),
+            {"email": "a@example.com", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(dup_email.status_code, status.HTTP_400_BAD_REQUEST)
+
+        dup_user = self.client.post(
+            reverse("accounts:signup"),
+            {"username": "user_a", "email": "new@example.com", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(dup_user.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Login by email, wrong password, inactive user, last_login, and logout blacklist
+        bad_pw = self.client.post(
+            reverse("accounts:login"),
+            {"email": "a@example.com", "password": "WrongPassword!"},
+            format="json",
+        )
+        self.assertEqual(bad_pw.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        login_ok = self.client.post(
+            reverse("accounts:login"),
+            {"email": "a@example.com", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(login_ok.status_code, status.HTTP_200_OK)
+        self.user_a.refresh_from_db()
+        self.assertIsNotNone(self.user_a.last_login)
+
+        refresh_tok = login_ok.data["refresh"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login_ok.data['access']}")
+        self.assertEqual(
+            self.client.post(reverse("accounts:logout"), {"refresh": refresh_tok}, format="json").status_code,
+            status.HTTP_200_OK,
+        )
+        self.client.credentials()
+        self.assertEqual(
+            self.client.post(reverse("accounts:token-refresh"), {"refresh": refresh_tok}, format="json").status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+        self.user_b.is_active = False
+        self.user_b.is_verified = True
+        self.user_b.save(update_fields=["is_active", "is_verified"])
+        self.assertEqual(
+            self.client.post(
+                reverse("accounts:login"),
+                {"email": "b@example.com", "password": "StrongPass123!"},
+                format="json",
+            ).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+
+        # Password reset request + confirm
+        mail.outbox.clear()
+        self.assertEqual(
+            self.client.post(
+                reverse("accounts:password-reset"), {"email": "a@example.com"}, format="json"
+            ).status_code,
+            status.HTTP_200_OK,
+        )
+        reset_otp = re.search(r"\b(\d{4})\b", mail.outbox[0].body).group(1)
+        self.assertEqual(
+            self.client.post(
+                reverse("accounts:password-reset-confirm"),
+                {
+                    "email": "a@example.com",
+                    "otp": reset_otp,
+                    "password": "NewStrongPass456!",
+                    "confirm_password": "NewStrongPass456!",
+                },
+                format="json",
+            ).status_code,
+            status.HTTP_200_OK,
+        )
+
+        # Google OAuth: cancelled, invalid state, invalid token, signup, and existing-email link
+        cache.clear()
+        self.assertEqual(
+            self.client.post(
+                reverse("accounts:google-callback"), {"error": "access_denied"}, format="json"
+            ).status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertEqual(
+            self.client.post(
+                reverse("accounts:google-callback"),
+                {"code": "abc", "state": "bad-state"},
+                format="json",
+            ).status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+
+        init_res = self.client.get(reverse("accounts:google-url"))
+        state = re.search(r"state=([^&]+)", init_res.data["auth_url"]).group(1)
+        with patch("accounts.views.http_requests.post") as mock_tok, patch(
+            "accounts.views.google_id_token.verify_oauth2_token"
+        ) as mock_verify:
+            mock_tok.return_value.ok = True
+            mock_tok.return_value.json.return_value = {"id_token": "fake-id-token"}
+            mock_verify.side_effect = ValueError("Expired token")
+            self.assertEqual(
+                self.client.post(
+                    reverse("accounts:google-callback"),
+                    {"code": "good-code", "state": state},
+                    format="json",
+                ).status_code,
+                status.HTTP_401_UNAUTHORIZED,
+            )
+
+        init_res2 = self.client.get(reverse("accounts:google-url"))
+        state2 = re.search(r"state=([^&]+)", init_res2.data["auth_url"]).group(1)
+        with patch("accounts.views.http_requests.post") as mock_tok, patch(
+            "accounts.views.google_id_token.verify_oauth2_token"
+        ) as mock_verify:
+            mock_tok.return_value.ok = True
+            mock_tok.return_value.json.return_value = {"id_token": "good-id-token"}
+            mock_verify.return_value = {
+                "iss": "https://accounts.google.com",
+                "sub": "google-sub-123",
+                "email": "googleuser@gmail.com",
+                "email_verified": True,
+                "given_name": "Google",
+                "family_name": "Learner",
+            }
+            g_res = self.client.post(
+                reverse("accounts:google-callback"),
+                {"code": "good-code", "state": state2},
+                format="json",
+            )
+            self.assertEqual(g_res.status_code, status.HTTP_200_OK)
+            g_user = User.objects.get(email="googleuser@gmail.com")
+            self.assertFalse(g_user.has_usable_password())
+            self.assertEqual(g_user.google_sub, "google-sub-123")

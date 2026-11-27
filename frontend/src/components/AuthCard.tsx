@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, Lock, X } from "lucide-react";
 import { consumeReturnUrl, peekReturnUrl, useAuth } from "@/context/AuthContext";
+import { ApiError } from "@/lib/apiClient";
 import { BrandLogo } from "./Navbar";
 import { OtpModal } from "./OtpModal";
 
@@ -43,14 +44,15 @@ const INPUT_CLASS =
 export function AuthCard({ mode }: AuthCardProps) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login, register, resendOtp, startGoogleAuth } = useAuth();
   const returnUrl = useSyncExternalStore(
     emptySubscribe,
     () => peekReturnUrl(),
     () => null
   );
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -58,19 +60,32 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const [verifiedToast, setVerifiedToast] = useState(false);
 
+  async function handleGoogle() {
+    setError("");
+    setGoogleLoading(true);
+    try {
+      await startGoogleAuth();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not start Google sign-in.");
+      setGoogleLoading(false);
+    }
+  }
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
 
-    if (isSignup && !name.trim()) {
-      setError("Please enter your full name.");
+    if (isSignup && (!firstName.trim() || !lastName.trim())) {
+      setError("Please enter both your first and last name.");
       return;
     }
-    if (!email.trim()) {
-      setError("Please enter your email address.");
+    if (!email.trim() || !email.includes("@")) {
+      setError("Please enter a valid email address.");
       return;
     }
     if (password.length < 8) {
@@ -86,17 +101,29 @@ export function AuthCard({ mode }: AuthCardProps) {
     try {
       if (isSignup) {
         const res = await register({
-          name: name.trim(),
-          email: email.trim(),
+          firstName,
+          lastName,
+          email,
           password,
+          confirmPassword,
         });
         setOtpEmail(res.email);
         return;
       }
-      await login(email.trim(), password);
+      await login(email, password);
       router.push(consumeReturnUrl() || "/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed.");
+      if (err instanceof ApiError && err.status === 403 && err.message.includes("verify")) {
+        const normalized = email.trim().toLowerCase();
+        try {
+          await resendOtp(normalized);
+        } catch {
+          // Cooldown may still be active; modal still lets user enter existing code
+        }
+        setOtpEmail(normalized);
+      } else {
+        setError(err instanceof Error ? err.message : "Authentication failed.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -136,11 +163,12 @@ export function AuthCard({ mode }: AuthCardProps) {
 
         <button
           type="button"
-          onClick={() => setError("Google sign-in will connect once Backend auth is enabled.")}
-          className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark"
+          disabled={googleLoading}
+          onClick={() => void handleGoogle()}
+          className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-cream-dark disabled:opacity-60"
         >
           <GoogleIcon />
-          {isSignup ? "Sign up with Google" : "Log in with Google"}
+          {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
         <div className="my-5 flex items-center gap-3">
@@ -162,20 +190,37 @@ export function AuthCard({ mode }: AuthCardProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {isSignup && (
-            <div>
-              <label htmlFor="name" className="block text-xs font-semibold text-ink">
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                placeholder="e.g. Faizan Aslam"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={INPUT_CLASS}
-                required
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="first-name" className="block text-xs font-semibold text-ink">
+                  First Name
+                </label>
+                <input
+                  id="first-name"
+                  type="text"
+                  autoComplete="given-name"
+                  placeholder="Faizan"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className={INPUT_CLASS}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="last-name" className="block text-xs font-semibold text-ink">
+                  Last Name
+                </label>
+                <input
+                  id="last-name"
+                  type="text"
+                  autoComplete="family-name"
+                  placeholder="Aslam"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className={INPUT_CLASS}
+                  required
+                />
+              </div>
             </div>
           )}
 
@@ -196,9 +241,19 @@ export function AuthCard({ mode }: AuthCardProps) {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-xs font-semibold text-ink">
-              {isSignup ? "Create Password" : "Password"}
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="block text-xs font-semibold text-ink">
+                {isSignup ? "Create Password" : "Password"}
+              </label>
+              {!isSignup && (
+                <Link
+                  href="/forgot-password"
+                  className="text-xs font-semibold text-forest hover:text-amber transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <input
                 id="password"
@@ -270,7 +325,7 @@ export function AuthCard({ mode }: AuthCardProps) {
             {submitting
               ? "Please wait..."
               : isSignup
-                ? "Create free account"
+                ? "Sign Up"
                 : "Log in"}
             <ArrowRight className="h-4 w-4" />
           </button>
@@ -279,7 +334,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         {verifiedToast && (
           <div
             role="status"
-            className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-900"
+            className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-900"
           >
             <CheckCircle2 className="h-4 w-4 text-emerald-700" />
             Email verified! Welcome
@@ -292,7 +347,7 @@ export function AuthCard({ mode }: AuthCardProps) {
             href={isSignup ? "/login" : "/signup"}
             className="font-semibold text-forest hover:text-amber transition-colors"
           >
-            {isSignup ? "Log in" : "Start learning free"}
+            {isSignup ? "Log in" : "Sign up"}
           </Link>
         </p>
       </div>
