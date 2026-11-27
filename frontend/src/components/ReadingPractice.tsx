@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { READING_PASSAGES } from "@/data/reading";
+import {
+  fetchNextExam,
+  submitObjectiveExam,
+  type ExamPayload,
+} from "@/services/ieltsService";
 
 function estimateBand(correct: number, total: number): string {
   const ratio = total > 0 ? correct / total : 0;
@@ -18,11 +25,36 @@ export function ReadingPractice({
 }: {
   onComplete?: (accuracy: number) => void;
 }) {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [liveExam, setLiveExam] = useState<ExamPayload | null>(null);
   const [passageIdx, setPassageIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    fetchNextExam("reading")
+      .then((exam) => {
+        if (exam.questions?.length) setLiveExam(exam);
+      })
+      .catch(() => {
+        // Fallback to local sample if backend has no seeded reading tests yet
+      });
+  }, [user]);
 
   const passage = READING_PASSAGES[passageIdx];
+  const activeQuestions = liveExam
+    ? liveExam.questions.map((q) => ({
+        id: String(q.id),
+        prompt: q.prompt,
+        options: q.options.length ? q.options : undefined,
+        answer: "",
+        explanation: "",
+      }))
+    : passage.questions;
 
   function selectPassage(idx: number) {
     setPassageIdx(idx);
@@ -30,7 +62,23 @@ export function ReadingPractice({
     setChecked(false);
   }
 
-  function handleCheck() {
+  async function handleCheck() {
+    if (liveExam && user) {
+      setSubmitting(true);
+      setApiError("");
+      try {
+        const res = await submitObjectiveExam(liveExam.id, answers);
+        const pct = Math.round((res.correct / Math.max(1, res.total)) * 100);
+        onComplete?.(pct);
+        router.push(`/result/${res.attempt_id}`);
+        return;
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : "Submission failed.");
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
     setChecked(true);
     const correctCount = passage.questions.filter(
       (q) =>
@@ -82,31 +130,42 @@ export function ReadingPractice({
         <article className="lg:col-span-6 rounded-3xl border border-border bg-surface p-6 sm:p-7">
           <div className="flex items-center justify-between gap-2 border-b border-border pb-4">
             <span className="text-xs font-semibold text-forest">
-              {passage.topic}
+              {liveExam ? liveExam.book_series : passage.topic}
             </span>
             <span className="rounded-full bg-cream px-3 py-1 text-xs font-medium text-muted">
-              {passage.recommendedMinutes} min target
+              {liveExam ? liveExam.duration_minutes : passage.recommendedMinutes} min target
             </span>
           </div>
           <h3 className="mt-4 font-serif text-xl font-semibold text-ink sm:text-2xl">
-            {passage.title}
+            {liveExam ? liveExam.title : passage.title}
           </h3>
           <div className="mt-4 space-y-4 text-sm leading-relaxed text-ink/90">
-            {passage.paragraphs.map((para) => (
-              <p key={para.key}>
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded bg-cream-dark text-xs font-bold text-forest">
-                  {para.key}
-                </span>
-                {para.text}
+            {liveExam ? (
+              <p className="whitespace-pre-line">
+                {String(liveExam.content?.text ?? "")}
               </p>
-            ))}
+            ) : (
+              passage.paragraphs.map((para) => (
+                <p key={para.key}>
+                  <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded bg-cream-dark text-xs font-bold text-forest">
+                    {para.key}
+                  </span>
+                  {para.text}
+                </p>
+              ))
+            )}
           </div>
         </article>
 
         {/* Right: Questions & Instant Answers */}
         <div className="lg:col-span-6 rounded-3xl border border-border bg-surface p-6 sm:p-7 flex flex-col justify-between">
+          {apiError && (
+            <p className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs text-rose-800">
+              {apiError}
+            </p>
+          )}
           <div className="space-y-5">
-            {passage.questions.map((q, index) => {
+            {activeQuestions.map((q, index) => {
               const userVal = answers[q.id] ?? "";
               const isCorrect =
                 userVal.trim().toLowerCase() === q.answer.toLowerCase();
@@ -214,10 +273,11 @@ export function ReadingPractice({
               </button>
               <button
                 type="button"
-                onClick={handleCheck}
-                className="rounded-full bg-amber px-5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
+                disabled={submitting}
+                onClick={() => void handleCheck()}
+                className="rounded-full bg-amber px-5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover disabled:opacity-60"
               >
-                Check Answers
+                {submitting ? "Grading..." : "Check Answers"}
               </button>
             </div>
           </div>

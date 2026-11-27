@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import type { WritingTestItem } from "@/data/writingTests";
+import {
+  submitWritingExam,
+  useEvaluationPolling,
+} from "@/services/ieltsService";
 import { markTodayPracticed } from "./WritingTracker";
 
 function countWords(text: string): number {
@@ -11,21 +16,46 @@ function countWords(text: string): number {
   return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
-export function WritingExamRunner({ test }: { test: WritingTestItem }) {
+export function WritingExamRunner({
+  test,
+  backendTestId,
+}: {
+  test: WritingTestItem;
+  backendTestId?: number;
+}) {
+  const { user } = useAuth();
   const [activeTask, setActiveTask] = useState<"task1" | "task2">("task1");
   const [task1Text, setTask1Text] = useState("");
   const [task2Text, setTask2Text] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [attemptId, setAttemptId] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const { status: pollStatus, error: pollError } =
+    useEvaluationPolling(attemptId);
 
   const w1 = countWords(task1Text);
   const w2 = countWords(task2Text);
 
-  const estimatedBand =
-    w1 >= 150 && w2 >= 250
-      ? "7.5+"
-      : w1 >= 100 && w2 >= 180
-        ? "6.5"
-        : "5.5";
+  async function handleSubmit() {
+    setError("");
+    if (!user) {
+      setError("Please log in to submit your essay for AI Band evaluation.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const targetId = backendTestId ?? test.testNumber;
+      const res = await submitWritingExam(targetId, task1Text, task2Text);
+      markTodayPracticed();
+      setAttemptId(res.attempt_id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit essay.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <section className="mx-auto max-w-6xl px-4 pt-6 pb-12 sm:px-6">
@@ -78,7 +108,6 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
 
       {/* Split Workspace */}
       <div className="mt-5 grid gap-6 lg:grid-cols-12">
-        {/* Prompt Panel */}
         <article className="lg:col-span-5 rounded-3xl border border-border bg-surface p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-amber">
             {activeTask === "task1"
@@ -99,7 +128,6 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
           </div>
         </article>
 
-        {/* Writing Editor */}
         <div className="lg:col-span-7 rounded-3xl border border-border bg-surface p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
@@ -132,17 +160,17 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
             />
           </div>
 
-          {submitted && (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-950">
-              <div className="flex items-center gap-2 font-bold">
-                <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-                Writing Test Submitted!
-              </div>
-              <p className="mt-1">
-                Task 1: <strong>{w1} words</strong> · Task 2:{" "}
-                <strong>{w2} words</strong> · Readiness Band:{" "}
-                <strong>{estimatedBand}</strong>
-              </p>
+          {(error || pollError) && (
+            <p className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-800">
+              {error || pollError}
+            </p>
+          )}
+
+          {pollStatus === "PROCESSING" && (
+            <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-semibold text-emerald-900">
+              <Loader2 className="h-4 w-4 animate-spin text-forest" />
+              AI Examiner is grading your essay... Redirecting to your report
+              shortly.
             </div>
           )}
 
@@ -152,7 +180,8 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
               onClick={() => {
                 setTask1Text("");
                 setTask2Text("");
-                setSubmitted(false);
+                setAttemptId(null);
+                setError("");
               }}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-ink hover:bg-cream-dark"
             >
@@ -162,13 +191,15 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
 
             <button
               type="button"
-              onClick={() => {
-                setSubmitted(true);
-                markTodayPracticed();
-              }}
-              className="rounded-full bg-amber px-6 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:text-sm"
+              disabled={submitting || pollStatus === "PROCESSING"}
+              onClick={() => void handleSubmit()}
+              className="rounded-full bg-amber px-6 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover disabled:opacity-60 sm:text-sm"
             >
-              Submit Writing Test
+              {submitting
+                ? "Submitting..."
+                : pollStatus === "PROCESSING"
+                  ? "Evaluating..."
+                  : "Submit Writing Test"}
             </button>
           </div>
         </div>

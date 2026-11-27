@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { RequireAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { DashboardHero } from "@/components/DashboardHero";
+import { DashboardAnalytics } from "@/components/DashboardAnalytics";
 import { ModulesSection } from "@/components/ModulesSection";
 import { SkillLearningModule } from "@/components/SkillLearningModule";
 import { Footer } from "@/components/CtaFooter";
@@ -21,12 +23,15 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1 pb-6">
-        <DashboardHero />
-        <ModulesSection />
-        <SkillLearningModule module={WRITING_MODULE} />
-        <SkillLearningModule module={SPEAKING_MODULE} />
-        <SkillLearningModule module={LISTENING_MODULE} />
-        <SkillLearningModule module={READING_MODULE} />
+        <RequireAuth>
+          <DashboardHero />
+          <DashboardAnalytics />
+          <ModulesSection />
+          <SkillLearningModule module={WRITING_MODULE} />
+          <SkillLearningModule module={SPEAKING_MODULE} />
+          <SkillLearningModule module={LISTENING_MODULE} />
+          <SkillLearningModule module={READING_MODULE} />
+        </RequireAuth>
       </main>
       <Footer />
     </div>

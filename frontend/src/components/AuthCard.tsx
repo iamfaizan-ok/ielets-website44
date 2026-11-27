@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { BrandLogo } from "./Navbar";
 
 interface AuthCardProps {
@@ -39,6 +40,7 @@ const INPUT_CLASS =
 export function AuthCard({ mode }: AuthCardProps) {
   const isSignup = mode === "signup";
   const router = useRouter();
+  const { login, register } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,8 +49,9 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
 
@@ -69,17 +72,19 @@ export function AuthCard({ mode }: AuthCardProps) {
       return;
     }
 
-    // ponytail: client-side session until Backend auth API is connected
-    const fallbackName = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Learner";
-    const displayName = isSignup
-      ? name.trim()
-      : fallbackName.replace(/\b\w/g, (c) => c.toUpperCase());
-
-    localStorage.setItem(
-      "bandora_user",
-      JSON.stringify({ name: displayName, email: email.trim(), isNew: isSignup })
-    );
-    router.push("/dashboard");
+    setSubmitting(true);
+    try {
+      if (isSignup) {
+        await register({ name: name.trim(), email: email.trim(), password });
+      } else {
+        await login(email.trim(), password);
+      }
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authentication failed.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -234,9 +239,14 @@ export function AuthCard({ mode }: AuthCardProps) {
 
           <button
             type="submit"
-            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
+            disabled={submitting}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber px-6 py-3 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover disabled:opacity-60"
           >
-            {isSignup ? "Create free account" : "Log in"}
+            {submitting
+              ? "Please wait..."
+              : isSignup
+                ? "Create free account"
+                : "Log in"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>

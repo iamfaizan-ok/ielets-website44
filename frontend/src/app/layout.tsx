@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lora, Plus_Jakarta_Sans } from "next/font/google";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const lora = Lora({
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${lora.variable} ${jakarta.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full bg-cream text-ink font-sans flex flex-col">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

@@ -15,8 +15,10 @@ import {
   PenLine,
   Play,
   RotateCcw,
+  Sparkles,
   X,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { NAV_LINKS, PRACTICE_ITEMS } from "@/data/landing";
 
 const PRACTICE_ICONS: Record<string, typeof BookOpen> = {
@@ -67,6 +69,7 @@ const WRITING_EXAM_SECONDS = 60 * 60;
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth();
   const isDashboard = pathname?.startsWith("/dashboard");
   const isWriting = pathname?.startsWith("/writing");
   const [open, setOpen] = useState(false);
@@ -84,8 +87,8 @@ export function Navbar() {
   const timerMins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const timerSecs = String(secondsLeft % 60).padStart(2, "0");
 
-  function handleLogout() {
-    localStorage.removeItem("bandora_user");
+  async function handleLogout() {
+    await logout();
     setOpen(false);
     router.push("/");
   }
@@ -205,15 +208,25 @@ export function Navbar() {
                 <RotateCcw className="h-3 w-3" />
               </button>
             </div>
-          ) : isDashboard ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
-            >
-              <LogOut className="h-4 w-4" />
-              Log out
-            </button>
+          ) : isDashboard || user ? (
+            <div className="flex items-center gap-2.5">
+              {user && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-forest border border-emerald-200">
+                  <Sparkles className="h-3.5 w-3.5 text-amber" />
+                  {user.plan_tier === "PRO"
+                    ? "PRO"
+                    : `${user.ai_credits} AI Credits`}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </div>
           ) : (
             <>
               <Link

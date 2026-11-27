@@ -75,8 +75,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Database with Supabase PgBouncer connection pooling compatibility
+# Database: DATABASE_URL (cloud/PgBouncer) -> PostgreSQL env vars -> SQLite fallback
 DATABASE_URL = os.getenv("DATABASE_URL")
+DB_NAME = os.getenv("DB_NAME")
 if DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
@@ -86,8 +87,22 @@ if DATABASE_URL:
         )
     }
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+elif DB_NAME:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": DB_NAME,
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "CONN_MAX_AGE": 600,
+            "DISABLE_SERVER_SIDE_CURSORS": os.getenv("DB_POOLED", "False").lower()
+            in ("1", "true", "yes"),
+        }
+    }
 else:
-    # ponytail: local SQLite fallback for offline tests/checks when DATABASE_URL is unset
+    # ponytail: local SQLite fallback when neither DATABASE_URL nor DB_NAME is set
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
