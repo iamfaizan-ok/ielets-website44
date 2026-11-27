@@ -22,8 +22,14 @@ const CTA_ICONS = {
 
 export function SkillLearningModule({
   module,
+  eyebrowOverride,
+  titleOverride,
+  showCta = true,
 }: {
   module: SkillLearningConfig;
+  eyebrowOverride?: string;
+  titleOverride?: string;
+  showCta?: boolean;
 }) {
   const [showAllVideos, setShowAllVideos] = useState(false);
   const visibleVideos = showAllVideos
@@ -41,29 +47,31 @@ export function SkillLearningModule({
         <div className="flex flex-col justify-between gap-4 border-b border-border pb-5 sm:flex-row sm:items-center">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest">
-              {module.eyebrow}
+              {eyebrowOverride ?? module.eyebrow}
             </p>
             <h2 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              {module.title}
+              {titleOverride ?? module.title}
             </h2>
             <p className="mt-1 text-xs text-muted sm:text-sm">
               {module.subtitle}
             </p>
           </div>
 
-          <Link
-            href={
-              module.icon === "reading"
-                ? "/reading"
-                : module.icon === "writing"
-                  ? "/writing"
-                  : "#modules"
-            }
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:self-auto"
-          >
-            <CtaIcon className="h-4 w-4" />
-            {module.ctaLabel}
-          </Link>
+          {showCta && (
+            <Link
+              href={
+                module.icon === "reading"
+                  ? "/reading"
+                  : module.icon === "writing"
+                    ? "/writing"
+                    : "#modules"
+              }
+              className="inline-flex shrink-0 items-center gap-2 self-start rounded-full bg-amber px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:self-auto"
+            >
+              <CtaIcon className="h-4 w-4" />
+              {module.ctaLabel}
+            </Link>
+          )}
         </div>
 
         {/* Famous IELTS Teachers */}

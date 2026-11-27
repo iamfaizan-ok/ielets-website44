@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/Navbar";
 import { WritingLibrary } from "@/components/WritingLibrary";
 import { WritingReport } from "@/components/WritingReport";
+import { SkillLearningModule } from "@/components/SkillLearningModule";
 import { Footer } from "@/components/CtaFooter";
+import { WRITING_MODULE } from "@/data/learningModules";
 
 export const metadata: Metadata = {
   title: "IELTS Writing Tests — Books & Practice | Bandora",
@@ -17,6 +19,12 @@ export default function WritingPage() {
       <main className="flex-1">
         <WritingLibrary />
         <WritingReport />
+        <SkillLearningModule
+          module={WRITING_MODULE}
+          eyebrowOverride="More Learn About Writing in IELTS"
+          titleOverride="Learn IELTS Writing from Top Teachers"
+          showCta={false}
+        />
       </main>
       <Footer />
     </div>
