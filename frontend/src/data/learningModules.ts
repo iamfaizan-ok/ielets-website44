@@ -520,3 +520,46 @@ export const READING_MODULE: SkillLearningConfig = {
     },
   ],
 };
+
+export const ALL_LEARNING_MODULES: SkillLearningConfig[] = [
+  WRITING_MODULE,
+  SPEAKING_MODULE,
+  LISTENING_MODULE,
+  READING_MODULE,
+];
+
+export function getLessonSlug(moduleId: string, step: number): string {
+  const prefix = moduleId.replace("-module", "");
+  return `${prefix}-${step}`;
+}
+
+export function getLessonBySlug(slug: string) {
+  for (const mod of ALL_LEARNING_MODULES) {
+    const video = mod.videos.find(
+      (v) => getLessonSlug(mod.id, v.step) === slug
+    );
+    if (video) {
+      return {
+        module: mod,
+        video,
+        moreVideos: mod.videos.filter((v) => v.step !== video.step),
+      };
+    }
+  }
+  return null;
+}
+
+export function toYoutubeEmbedUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const v = parsed.searchParams.get("v");
+    if (v) return `https://www.youtube.com/embed/${v}?rel=0`;
+    const q = parsed.searchParams.get("search_query");
+    if (q) {
+      return `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(q)}`;
+    }
+  } catch {
+    // Fallback to original URL
+  }
+  return url;
+}

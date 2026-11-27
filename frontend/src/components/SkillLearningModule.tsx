@@ -12,6 +12,7 @@ import {
   Play,
 } from "lucide-react";
 import type { SkillLearningConfig } from "@/data/learningModules";
+import { getLessonSlug } from "@/data/learningModules";
 
 const CTA_ICONS = {
   writing: PenLine,
@@ -141,11 +142,9 @@ export function SkillLearningModule({
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {visibleVideos.map((video) => (
-              <a
+              <Link
                 key={video.step}
-                href={video.url}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/lesson/${getLessonSlug(module.id, video.step)}`}
                 className="group flex items-center gap-3.5 rounded-2xl border border-border bg-cream/40 p-3 transition-colors hover:border-forest/40 hover:bg-cream"
               >
                 <div className="relative h-14 w-22 shrink-0 overflow-hidden rounded-xl bg-cream-dark border border-border">
@@ -180,7 +179,7 @@ export function SkillLearningModule({
                     {video.cta}
                   </span>
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
