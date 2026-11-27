@@ -12,17 +12,59 @@ export interface WritingTestItem {
 
 export type WritingReportPeriod = "day" | "week" | "month";
 
-export const WRITING_BOOKS = [
-  "Cambridge 19",
-  "Cambridge 18",
-  "Cambridge 17",
-  "Cambridge 16",
-] as const;
+export interface WritingBookSeries {
+  name: string;
+  featured?: boolean;
+  description: string;
+}
+
+export const WRITING_BOOK_SERIES: WritingBookSeries[] = [
+  {
+    name: "Cambridge Academic",
+    featured: true,
+    description:
+      "Authentic past-paper style Academic Writing tasks matching the real exam format and difficulty.",
+  },
+  {
+    name: "Cambridge General",
+    featured: true,
+    description:
+      "General Training letters (Task 1) and essay prompts (Task 2) modeled on official Cambridge tests.",
+  },
+  {
+    name: "Forecast Academic",
+    featured: true,
+    description:
+      "Recent high-frequency Academic Writing prompts curated for upcoming exam dates.",
+  },
+  {
+    name: "IELTS Trainer Academic",
+    description:
+      "Guided step-by-step Academic Writing tests with clear structure outlines.",
+  },
+  {
+    name: "Collins Practice Tests",
+    description:
+      "Structured Academic & General Writing tasks focused on coherence and lexical variety.",
+  },
+  {
+    name: "Official Guide to IELTS",
+    description:
+      "Core exam-style Writing Task 1 and Task 2 practice sets for steady band improvement.",
+  },
+  {
+    name: "Recent Actual Tests",
+    description:
+      "Real exam-inspired topics recently reported by IELTS candidates.",
+  },
+];
+
+export const WRITING_BOOKS = WRITING_BOOK_SERIES.map((b) => b.name);
 
 export const WRITING_TESTS: WritingTestItem[] = [
   {
     id: "cam19-test1",
-    book: "Cambridge 19",
+    book: "Cambridge Academic",
     testNumber: 1,
     category: "Academic",
     task1Type: "Bar Chart",
@@ -36,7 +78,7 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam19-test2",
-    book: "Cambridge 19",
+    book: "Cambridge Academic",
     testNumber: 2,
     category: "Academic",
     task1Type: "Line Graph",
@@ -50,7 +92,7 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam19-test3",
-    book: "Cambridge 19",
+    book: "Cambridge Academic",
     testNumber: 3,
     category: "Academic",
     task1Type: "Process Diagram",
@@ -64,8 +106,8 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam19-test4",
-    book: "Cambridge 19",
-    testNumber: 4,
+    book: "Cambridge General",
+    testNumber: 1,
     category: "General",
     task1Type: "Formal Letter",
     task1Prompt:
@@ -78,7 +120,7 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam18-test1",
-    book: "Cambridge 18",
+    book: "Forecast Academic",
     testNumber: 1,
     category: "Academic",
     task1Type: "Table",
@@ -92,8 +134,8 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam18-test2",
-    book: "Cambridge 18",
-    testNumber: 2,
+    book: "IELTS Trainer Academic",
+    testNumber: 1,
     category: "Academic",
     task1Type: "Map Comparison",
     task1Prompt:
@@ -106,7 +148,7 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam17-test1",
-    book: "Cambridge 17",
+    book: "Collins Practice Tests",
     testNumber: 1,
     category: "Academic",
     task1Type: "Pie Charts",
@@ -120,7 +162,7 @@ export const WRITING_TESTS: WritingTestItem[] = [
   },
   {
     id: "cam16-test1",
-    book: "Cambridge 16",
+    book: "Official Guide to IELTS",
     testNumber: 1,
     category: "Academic",
     task1Type: "Mixed Charts",
@@ -131,6 +173,20 @@ export const WRITING_TESTS: WritingTestItem[] = [
       "International tourism brings economic benefits to host countries, but it can also harm local environments. Do the benefits outweigh the drawbacks?",
     sampleOutline:
       "Introduction → Body 1 (jobs & infrastructure revenue) → Body 2 (eco-tourism regulation needed) → Conclusion.",
+  },
+  {
+    id: "recent-test1",
+    book: "Recent Actual Tests",
+    testNumber: 1,
+    category: "Academic",
+    task1Type: "Line Graph",
+    task1Prompt:
+      "The graph compares renewable energy share in total electricity production across three countries between 2000 and 2024. Summarise the main trends.",
+    task2Type: "Opinion",
+    task2Prompt:
+      "Some people believe public transport should be free for all citizens. To what extent do you agree or disagree?",
+    sampleOutline:
+      "Introduction → Body 1 (lower emissions & congestion) → Body 2 (funding & maintenance trade-offs) → Conclusion.",
   },
 ];
 
