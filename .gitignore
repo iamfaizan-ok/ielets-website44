@@ -20,6 +20,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Python / Django
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+staticfiles/
+media/
+
 # OS & editor files
 .DS_Store
 Thumbs.db
