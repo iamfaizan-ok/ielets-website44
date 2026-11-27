@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search, Star } from "lucide-react";
 import { WRITING_BOOK_SERIES, WRITING_TESTS } from "@/data/writingTests";
+import { WritingTracker } from "./WritingTracker";
 
 export function WritingLibrary() {
   const [selectedBook, setSelectedBook] = useState<string>("All");
@@ -24,46 +25,50 @@ export function WritingLibrary() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-6 pb-10 sm:px-6 sm:pt-8">
       <div className="grid gap-6 lg:grid-cols-12 items-start">
-        {/* Left Filters Sidebar */}
-        <aside className="lg:col-span-3 rounded-3xl border border-border bg-surface p-5">
-          <h2 className="font-serif text-xl font-semibold text-ink">Filters</h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setAppliedQuery(searchInput);
-            }}
-            className="mt-4 space-y-3"
-          >
-            <label
-              htmlFor="writing-search"
-              className="block text-xs font-semibold text-ink"
+        {/* Left Filters + Practice Tracker Sidebar */}
+        <aside className="lg:col-span-3 space-y-5">
+          <div className="rounded-3xl border border-border bg-surface p-5">
+            <h2 className="font-serif text-xl font-semibold text-ink">Filters</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setAppliedQuery(searchInput);
+              }}
+              className="mt-4 space-y-3"
             >
-              Search
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-              <input
-                id="writing-search"
-                type="text"
-                value={searchInput}
-                onChange={(e) => {
-                  setSearchInput(e.target.value);
-                  setAppliedQuery(e.target.value);
-                }}
-                placeholder="Search books or tests..."
-                className="w-full rounded-xl border border-border bg-cream/50 py-2 pl-8 pr-3 text-xs text-ink placeholder:text-muted/70 focus:border-forest focus:bg-surface focus:outline-none"
-              />
-            </div>
-            <p className="text-[11px] leading-snug text-muted">
-              Search across book names, Task 1 &amp; Task 2 topics.
-            </p>
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-amber py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
-            >
-              Filter
-            </button>
-          </form>
+              <label
+                htmlFor="writing-search"
+                className="block text-xs font-semibold text-ink"
+              >
+                Search
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+                <input
+                  id="writing-search"
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setAppliedQuery(e.target.value);
+                  }}
+                  placeholder="Search books or tests..."
+                  className="w-full rounded-xl border border-border bg-cream/50 py-2 pl-8 pr-3 text-xs text-ink placeholder:text-muted/70 focus:border-forest focus:bg-surface focus:outline-none"
+                />
+              </div>
+              <p className="text-[11px] leading-snug text-muted">
+                Search across book names, Task 1 &amp; Task 2 topics.
+              </p>
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-amber py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover"
+              >
+                Filter
+              </button>
+            </form>
+          </div>
+
+          <WritingTracker />
         </aside>
 
         {/* Right Books Pills + Compact Tests */}

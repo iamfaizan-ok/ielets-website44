@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, RotateCcw } from "lucide-react";
 import type { WritingTestItem } from "@/data/writingTests";
+import { markTodayPracticed } from "./WritingTracker";
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -161,7 +162,10 @@ export function WritingExamRunner({ test }: { test: WritingTestItem }) {
 
             <button
               type="button"
-              onClick={() => setSubmitted(true)}
+              onClick={() => {
+                setSubmitted(true);
+                markTodayPracticed();
+              }}
               className="rounded-full bg-amber px-6 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-amber-hover sm:text-sm"
             >
               Submit Writing Test
