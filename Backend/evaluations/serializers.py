@@ -2,20 +2,20 @@
 
 from rest_framework import serializers
 
-from .models import TestAttempt
+from exams.services import ALLOWED_UPLOAD_MIME_EXT
 
-ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp3", "audio/wav", "audio/webm", "audio/mp4", "audio/ogg"}
-MAX_AUDIO_BYTES = 15 * 1024 * 1024  # 15 MB
+from .models import TestAttempt
+from .services import sanitize_essay_text
 
 
 class ObjectiveSubmitSerializer(serializers.Serializer):
     test_id = serializers.IntegerField(min_value=1)
-    answers = serializers.DictField(child=serializers.CharField(allow_blank=True))
+    answers = serializers.DictField(child=serializers.CharField(allow_blank=True, max_length=255))
 
 
 class ExplainAnswerSerializer(serializers.Serializer):
     question_id = serializers.IntegerField(min_value=1)
-    user_answer = serializers.CharField(allow_blank=True, required=False, default="")
+    user_answer = serializers.CharField(allow_blank=True, required=False, default="", max_length=255)
 
 
 class WritingSubmitSerializer(serializers.Serializer):
@@ -23,18 +23,27 @@ class WritingSubmitSerializer(serializers.Serializer):
     task1_response = serializers.CharField(allow_blank=True, required=False, default="")
     task2_response = serializers.CharField(min_length=20)
 
+    def validate_task1_response(self, value: str) -> str:
+        if not value.strip():
+            return ""
+        try:
+            return sanitize_essay_text(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate_task2_response(self, value: str) -> str:
+        try:
+            return sanitize_essay_text(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
 
 class SpeakingSubmitSerializer(serializers.Serializer):
     test_id = serializers.IntegerField(min_value=1)
-    audio = serializers.FileField()
-
-    def validate_audio(self, file_obj):
-        if file_obj.size > MAX_AUDIO_BYTES:
-            raise serializers.ValidationError("Audio file exceeds 15 MB limit.")
-        content_type = getattr(file_obj, "content_type", "")
-        if content_type and content_type not in ALLOWED_AUDIO_TYPES:
-            raise serializers.ValidationError("Unsupported audio format.")
-        return file_obj
+    speaking_audio_key = serializers.CharField(max_length=512)
+    mime_type = serializers.ChoiceField(
+        choices=list(ALLOWED_UPLOAD_MIME_EXT.keys()), default="audio/webm"
+    )
 
 
 class TestAttemptListSerializer(serializers.ModelSerializer):
@@ -42,7 +51,7 @@ class TestAttemptListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TestAttempt
-        fields = ("id", "test_id", "test_title", "module", "band_score", "created_at")
+        fields = ("id", "test_id", "test_title", "module", "status", "band_score", "created_at")
 
 
 class TestAttemptDetailSerializer(serializers.ModelSerializer):
@@ -55,6 +64,8 @@ class TestAttemptDetailSerializer(serializers.ModelSerializer):
             "test_id",
             "test_title",
             "module",
+            "status",
+            "task_id",
             "user_answers",
             "speaking_audio_url",
             "band_score",

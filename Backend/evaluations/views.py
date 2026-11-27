@@ -1,21 +1,25 @@
-"""Evaluations API views: objective grading, AI writing/speaking, history, and analytics."""
+"""Evaluations API views: async Celery AI grading, timer enforcement, IDOR-safe history & analytics."""
 
 from collections import defaultdict
-from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
-from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import UserActivityLog, log_user_activity
-from accounts.permissions import HasAICreditsOrProPlan, IsOwnerOnly
+from accounts.permissions import (
+    AIHourThrottle,
+    AIMinuteThrottle,
+    HasAICreditsOrProPlan,
+    IsOwnerOnly,
+)
+from accounts.services import verify_and_deduct_ai_credit
 from exams.models import IELTSTest, Question
-from exams.services import upload_media_to_r2
+from exams.services import validate_exam_timer
 
 from .models import TestAttempt
 from .serializers import (
@@ -26,17 +30,12 @@ from .serializers import (
     TestAttemptListSerializer,
     WritingSubmitSerializer,
 )
-from .services import (
-    calculate_ielts_band,
-    deduct_ai_credit,
-    evaluate_speaking_with_gemini,
-    evaluate_writing_with_openai,
-    explain_answer_with_ai,
-)
+from .services import calculate_ielts_band, explain_answer_with_ai
+from .tasks import process_speaking_evaluation, process_writing_evaluation
 
 
 class SubmitObjectiveView(APIView):
-    """Grades Reading & Listening answers against hidden DB answers."""
+    """Grades Reading & Listening answers against hidden DB answers with timer validation."""
 
     permission_classes = [IsAuthenticated]
 
@@ -50,6 +49,12 @@ class SubmitObjectiveView(APIView):
             module__in=[IELTSTest.Module.READING, IELTSTest.Module.LISTENING],
             is_active=True,
         )
+        if not validate_exam_timer(request.user.id, test.id, test.duration_minutes):
+            return Response(
+                {"detail": "Exam time limit exceeded (including 2-minute grace buffer)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         questions = list(test.questions.all())
         if not questions:
             return Response(
@@ -87,6 +92,7 @@ class SubmitObjectiveView(APIView):
             user=request.user,
             test=test,
             module=test.module,
+            status=TestAttempt.Status.COMPLETED,
             user_answers=submitted,
             band_score=band,
             criteria_scores={"question_types": dict(type_breakdown)},
@@ -112,11 +118,8 @@ class SubmitObjectiveView(APIView):
 
 
 class ExplainAnswerView(APIView):
-    """On-demand AI explanation for a specific Reading/Listening question."""
-
     permission_classes = [IsAuthenticated, HasAICreditsOrProPlan]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "ai_eval"
+    throttle_classes = [AIMinuteThrottle, AIHourThrottle]
 
     def post(self, request):
         serializer = ExplainAnswerSerializer(data=request.data)
@@ -126,22 +129,20 @@ class ExplainAnswerView(APIView):
             Question.objects.select_related("test"),
             pk=serializer.validated_data["question_id"],
         )
-        context_text = str(question.test.content)
         explanation = explain_answer_with_ai(
             question.prompt,
             question.correct_answer,
             serializer.validated_data["user_answer"],
-            context_text,
+            str(question.test.content),
         )
         return Response({"question_id": question.id, "ai_explanation": explanation})
 
 
 class SubmitWritingView(APIView):
-    """Evaluates Writing Task 1 & 2 with OpenAI gpt-4o-mini Structured Outputs."""
+    """Atomically locks credit, validates timer, and queues async Celery Writing evaluation."""
 
     permission_classes = [IsAuthenticated, HasAICreditsOrProPlan]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "ai_eval"
+    throttle_classes = [AIMinuteThrottle, AIHourThrottle]
 
     def post(self, request):
         serializer = WritingSubmitSerializer(data=request.data)
@@ -153,59 +154,65 @@ class SubmitWritingView(APIView):
             module=IELTSTest.Module.WRITING,
             is_active=True,
         )
-        t1 = serializer.validated_data["task1_response"]
-        t2 = serializer.validated_data["task2_response"]
+        if not validate_exam_timer(request.user.id, test.id, test.duration_minutes):
+            return Response(
+                {"detail": "Exam time limit exceeded (including 2-minute grace buffer)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        result = evaluate_writing_with_openai(test.content, t1, t2)
-        deduct_ai_credit(request.user, request, {"test_id": test.id, "module": "writing"})
+        deducted = verify_and_deduct_ai_credit(
+            request.user, request, {"test_id": test.id, "module": "writing"}
+        )
 
-        band = Decimal(f"{round(result['band_score'] * 2) / 2:.1f}")
         attempt = TestAttempt.objects.create(
             user=request.user,
             test=test,
             module=IELTSTest.Module.WRITING,
-            user_answers={"task1": t1, "task2": t2},
-            band_score=band,
-            criteria_scores={
-                "task_achievement": result["task_achievement"],
-                "coherence_cohesion": result["coherence_cohesion"],
-                "lexical_resource": result["lexical_resource"],
-                "grammatical_range": result["grammatical_range"],
-            },
-            ai_feedback={
-                "sentence_corrections": result["sentence_corrections"],
-                "upgraded_vocabulary": result["upgraded_vocabulary"],
-                "model_sample_band_8_5": result["model_sample_band_8_5"],
-                "summary": result["summary"],
+            status=TestAttempt.Status.PROCESSING,
+            user_answers={
+                "task1": serializer.validated_data["task1_response"],
+                "task2": serializer.validated_data["task2_response"],
             },
         )
+        task = process_writing_evaluation.delay(attempt.id, deducted)
+        attempt.task_id = str(task.id)
+        attempt.save(update_fields=["task_id"])
+
         log_user_activity(
             request.user,
             UserActivityLog.Action.SUBMIT_TEST,
             request,
-            {"attempt_id": attempt.id, "module": "writing", "band": str(band)},
+            {"attempt_id": attempt.id, "module": "writing", "task_id": attempt.task_id},
         )
 
         return Response(
             {
-                **TestAttemptDetailSerializer(attempt).data,
+                "attempt_id": attempt.id,
+                "task_id": attempt.task_id,
+                "status": attempt.status,
                 "remaining_credits": request.user.ai_credits,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
 class SubmitSpeakingView(APIView):
-    """Uploads user audio to Cloudflare R2 (30-day retention) and evaluates via Gemini 2.5 Flash."""
+    """Accepts R2 presigned audio key (user-scoped) and queues async Gemini evaluation."""
 
     permission_classes = [IsAuthenticated, HasAICreditsOrProPlan]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "ai_eval"
-    parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [AIMinuteThrottle, AIHourThrottle]
 
     def post(self, request):
         serializer = SpeakingSubmitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        audio_key = serializer.validated_data["speaking_audio_key"]
+        expected_prefix = f"speaking/{request.user.id}/"
+        if not audio_key.startswith(expected_prefix):
+            return Response(
+                {"detail": "Invalid audio object key for current user."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         test = get_object_or_404(
             IELTSTest,
@@ -213,61 +220,58 @@ class SubmitSpeakingView(APIView):
             module=IELTSTest.Module.SPEAKING,
             is_active=True,
         )
-        audio_file = serializer.validated_data["audio"]
-        audio_bytes = audio_file.read()
-        ext = (audio_file.name.rsplit(".", 1)[-1] if "." in audio_file.name else "webm")[:10]
-        mime_type = audio_file.content_type or "audio/webm"
-
-        _, audio_url = upload_media_to_r2(
-            audio_bytes,
-            folder=f"speaking/{request.user.id}",
-            extension=ext,
-            content_type=mime_type,
-            expire_days=30,
+        deducted = verify_and_deduct_ai_credit(
+            request.user, request, {"test_id": test.id, "module": "speaking"}
         )
-        result = evaluate_speaking_with_gemini(test.content, audio_bytes, mime_type)
-        deduct_ai_credit(request.user, request, {"test_id": test.id, "module": "speaking"})
 
-        band = Decimal(f"{round(result['band_score'] * 2) / 2:.1f}")
+        base = settings.R2_PUBLIC_BASE_URL.rstrip("/")
+        audio_url = f"{base}/{audio_key}" if base else audio_key
         attempt = TestAttempt.objects.create(
             user=request.user,
             test=test,
             module=IELTSTest.Module.SPEAKING,
-            user_answers={"transcript": result.get("transcript", "")},
+            status=TestAttempt.Status.PROCESSING,
             speaking_audio_url=audio_url,
-            band_score=band,
-            criteria_scores={
-                "fluency_coherence": result["fluency_coherence"],
-                "lexical_resource": result["lexical_resource"],
-                "grammatical_range": result["grammatical_range"],
-                "pronunciation": result["pronunciation"],
-            },
-            ai_feedback={
-                "sentence_corrections": result["sentence_corrections"],
-                "upgraded_vocabulary": result["upgraded_vocabulary"],
-                "model_sample_band_8_5": result["model_sample_band_8_5"],
-                "summary": result["summary"],
-            },
+            user_answers={"audio_key": audio_key},
         )
+        task = process_speaking_evaluation.delay(
+            attempt.id,
+            audio_key,
+            serializer.validated_data["mime_type"],
+            deducted,
+        )
+        attempt.task_id = str(task.id)
+        attempt.save(update_fields=["task_id"])
+
         log_user_activity(
             request.user,
             UserActivityLog.Action.SUBMIT_TEST,
             request,
-            {"attempt_id": attempt.id, "module": "speaking", "band": str(band)},
+            {"attempt_id": attempt.id, "module": "speaking", "task_id": attempt.task_id},
         )
 
         return Response(
             {
-                **TestAttemptDetailSerializer(attempt).data,
+                "attempt_id": attempt.id,
+                "task_id": attempt.task_id,
+                "status": attempt.status,
                 "remaining_credits": request.user.ai_credits,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
-class AttemptHistoryListView(generics.ListAPIView):
-    """Strictly returns only the authenticated user's past attempts."""
+class EvaluationStatusView(generics.RetrieveAPIView):
+    """Lightweight polling endpoint strictly isolated to request.user (returns 404 for others)."""
 
+    serializer_class = TestAttemptDetailSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOnly]
+
+    def get_queryset(self):
+        return TestAttempt.objects.filter(user=self.request.user).select_related("test")
+
+
+class AttemptHistoryListView(generics.ListAPIView):
     serializer_class = TestAttemptListSerializer
     permission_classes = [IsAuthenticated]
 
@@ -280,8 +284,6 @@ class AttemptHistoryListView(generics.ListAPIView):
 
 
 class AttemptHistoryDetailView(generics.RetrieveAPIView):
-    """Enforces IsOwnerOnly + user filter to prevent IDOR."""
-
     serializer_class = TestAttemptDetailSerializer
     permission_classes = [IsAuthenticated, IsOwnerOnly]
 
@@ -290,12 +292,12 @@ class AttemptHistoryDetailView(generics.RetrieveAPIView):
 
 
 class UserAnalyticsView(APIView):
-    """Personal band progression and weakest question-type analytics for request.user."""
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        attempts = TestAttempt.objects.filter(user=request.user).order_by("created_at")
+        attempts = TestAttempt.objects.filter(
+            user=request.user, status=TestAttempt.Status.COMPLETED
+        ).order_by("created_at")
         overall_avg = attempts.aggregate(avg=Avg("band_score"))["avg"]
 
         by_module = {}
@@ -313,11 +315,9 @@ class UserAnalyticsView(APIView):
             for a in attempts[:30]
         ]
 
-        # Detect weakest objective question type across user's attempts
         totals: dict[str, dict[str, int]] = defaultdict(lambda: {"correct": 0, "total": 0})
         for a in attempts:
-            q_types = a.criteria_scores.get("question_types", {})
-            for q_type, counts in q_types.items():
+            for q_type, counts in a.criteria_scores.get("question_types", {}).items():
                 totals[q_type]["correct"] += counts.get("correct", 0)
                 totals[q_type]["total"] += counts.get("total", 0)
 

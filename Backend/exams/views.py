@@ -1,15 +1,27 @@
-"""Exams API views: test bank listing and smart random unattempted delivery."""
+"""Exams API views: Redis-cached test delivery, anti-cheat defer, and R2 presigned uploads."""
 
-from django.db.models import OuterRef, Subquery
-from rest_framework import generics, status
+from django.core.cache import cache
+from django.db.models import OuterRef, Prefetch, Subquery
+from rest_framework import generics, serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from evaluations.models import TestAttempt
 
-from .models import IELTSTest
+from .models import IELTSTest, Question
 from .serializers import IELTSTestSummarySerializer, IELTSTestTakeSerializer
+from .services import (
+    ALLOWED_UPLOAD_MIME_EXT,
+    MAX_UPLOAD_BYTES,
+    generate_r2_presigned_upload_url,
+    record_exam_start,
+)
+
+
+class PresignedUploadRequestSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=list(ALLOWED_UPLOAD_MIME_EXT.keys()))
+    file_size = serializers.IntegerField(min_value=1, max_value=MAX_UPLOAD_BYTES)
 
 
 class ExamListView(generics.ListAPIView):
@@ -28,7 +40,7 @@ class ExamListView(generics.ListAPIView):
 
 
 class NextUnattemptedExamView(APIView):
-    """Returns a random unattempted test for the requested module (falls back to oldest attempted)."""
+    """Returns a random unattempted test (cached payload + deferred answer keys + server timer)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -36,7 +48,7 @@ class NextUnattemptedExamView(APIView):
         module = module.lower()
         if module not in IELTSTest.Module.values:
             return Response(
-                {"detail": f"Invalid module '{module}'. Choose reading, listening, writing, or speaking."},
+                {"detail": f"Invalid module '{module}'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -44,33 +56,72 @@ class NextUnattemptedExamView(APIView):
             user=request.user, module=module
         ).values_list("test_id", flat=True)
 
-        unattempted = (
+        safe_questions = Prefetch(
+            "questions",
+            queryset=Question.objects.defer("correct_answer", "explanation"),
+        )
+
+        selected = (
             IELTSTest.objects.filter(module=module, is_active=True)
             .exclude(id__in=attempted_ids)
-            .prefetch_related("questions")
+            .prefetch_related(safe_questions)
             .order_by("?")
             .first()
         )
-        if unattempted:
-            return Response(IELTSTestTakeSerializer(unattempted).data)
+        if not selected:
+            latest_attempt = (
+                TestAttempt.objects.filter(user=request.user, test=OuterRef("pk"))
+                .order_by("-created_at")
+                .values("created_at")[:1]
+            )
+            selected = (
+                IELTSTest.objects.filter(module=module, is_active=True)
+                .annotate(last_attempted=Subquery(latest_attempt))
+                .prefetch_related(safe_questions)
+                .order_by("last_attempted")
+                .first()
+            )
 
-        # Fallback: oldest attempted test by this user in this module
-        latest_user_attempt = (
-            TestAttempt.objects.filter(user=request.user, test=OuterRef("pk"))
-            .order_by("-created_at")
-            .values("created_at")[:1]
-        )
-        fallback = (
-            IELTSTest.objects.filter(module=module, is_active=True)
-            .annotate(last_attempted=Subquery(latest_user_attempt))
-            .prefetch_related("questions")
-            .order_by("last_attempted")
-            .first()
-        )
-        if not fallback:
+        if not selected:
             return Response(
                 {"detail": f"No active tests available for module '{module}'."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(IELTSTestTakeSerializer(fallback).data)
+        cache_key = f"exam_take_payload:{selected.id}"
+        payload = cache.get(cache_key)
+        if payload is None:
+            payload = IELTSTestTakeSerializer(selected).data
+            cache.set(cache_key, payload, timeout=300)
+
+        started_at = record_exam_start(
+            request.user.id, selected.id, selected.duration_minutes
+        )
+        return Response(
+            {
+                **payload,
+                "duration_minutes": selected.duration_minutes,
+                "started_at": started_at,
+            }
+        )
+
+
+class PresignedUploadUrlView(APIView):
+    """Generates a 5-minute user-scoped R2 Presigned PUT URL for Speaking audio."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = PresignedUploadRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            data = generate_r2_presigned_upload_url(
+                user_id=request.user.id,
+                content_type=serializer.validated_data["content_type"],
+                file_size=serializer.validated_data["file_size"],
+            )
+        except (RuntimeError, ValueError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data, status=status.HTTP_200_OK)

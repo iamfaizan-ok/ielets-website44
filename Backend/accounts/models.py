@@ -1,7 +1,8 @@
-"""Accounts models: custom User, plan tiers, AI credits, and activity audit log."""
+"""Accounts models: custom User, subscription expiry, fair-use caps, and audit log."""
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -16,12 +17,22 @@ class User(AbstractUser):
     plan_tier = models.CharField(
         max_length=10, choices=PlanTier.choices, default=PlanTier.FREE
     )
+    pro_expires_at = models.DateTimeField(null=True, blank=True)
     ai_credits = models.PositiveIntegerField(default=3)
+    daily_ai_count = models.PositiveIntegerField(default=0)
+    daily_ai_reset_date = models.DateField(null=True, blank=True)
     target_band = models.DecimalField(max_digits=2, decimal_places=1, default=7.5)
     is_verified = models.BooleanField(default=False)
 
+    def has_active_pro(self) -> bool:
+        if self.plan_tier != self.PlanTier.PRO:
+            return False
+        if self.pro_expires_at and self.pro_expires_at <= timezone.now():
+            return False
+        return True
+
     def has_ai_access(self) -> bool:
-        return self.plan_tier == self.PlanTier.PRO or self.ai_credits > 0
+        return self.is_active and (self.has_active_pro() or self.ai_credits > 0)
 
     def __str__(self) -> str:
         return f"{self.username} ({self.plan_tier})"
@@ -31,17 +42,20 @@ class UserActivityLog(models.Model):
     class Action(models.TextChoices):
         REGISTER = "REGISTER", "Register"
         LOGIN = "LOGIN", "Login"
+        LOGOUT = "LOGOUT", "Logout"
         SUBMIT_TEST = "SUBMIT_TEST", "Submit Test"
         CREDIT_DEDUCTED = "CREDIT_DEDUCTED", "AI Credit Deducted"
+        CREDIT_REFUNDED = "CREDIT_REFUNDED", "AI Credit Refunded"
+        AI_EVAL_FAILED = "AI_EVAL_FAILED", "AI Evaluation Failed"
         PLAN_UPGRADED = "PLAN_UPGRADED", "Plan Upgraded"
 
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="activity_logs"
+        User, on_delete=models.CASCADE, related_name="activity_logs", db_index=True
     )
     action = models.CharField(max_length=32, choices=Action.choices)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]

@@ -1,4 +1,4 @@
-"""Production-ready Django settings for Bandora IELTS Backend."""
+"""Production-ready Django settings for Bandora IELTS Backend (High Concurrency & Hardened)."""
 
 from datetime import timedelta
 import os
@@ -75,6 +75,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database with Supabase PgBouncer connection pooling compatibility
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     DATABASES = {
@@ -84,6 +85,7 @@ if DATABASE_URL:
             ssl_require=True,
         )
     }
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
 else:
     # ponytail: local SQLite fallback for offline tests/checks when DATABASE_URL is unset
     DATABASES = {
@@ -92,6 +94,38 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+# Redis Caching (falls back to LocMemCache when REDIS_URL is unset in local dev/tests)
+REDIS_URL = os.getenv("REDIS_URL", "")
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bandora-local-cache",
+        }
+    }
+
+# Celery Configuration
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL or "memory://")
+CELERY_RESULT_BACKEND = REDIS_URL or "cache+memory://"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_ALWAYS_EAGER = DEBUG and not bool(os.getenv("CELERY_BROKER_URL"))
 
 AUTH_USER_MODEL = "accounts.User"
 
@@ -111,7 +145,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# DRF Configuration
+# DRF Configuration with Multi-Tier Rate Limiting
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "accounts.authentication.SupabaseOrSimpleJWTAuthentication",
@@ -125,15 +159,17 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "30/minute",
-        "user": "120/minute",
-        "ai_eval": "15/minute",
+        "user": "60/minute",
+        "auth_burst": "10/minute",
+        "ai_eval_min": "5/minute",
+        "ai_eval_hour": "30/hour",
     },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -141,7 +177,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# CORS & CSRF
+# CORS & CSRF (strict frontend whitelist)
 CORS_ALLOWED_ORIGINS = _split_env(
     "CORS_ALLOWED_ORIGINS",
     "http://localhost:3000,http://localhost:3001,https://ielets-website44.vercel.app",
@@ -161,6 +197,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() == "true"
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # Supabase Auth
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")

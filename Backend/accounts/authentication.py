@@ -1,8 +1,9 @@
-"""Dual JWT authentication: Django SimpleJWT + Supabase Auth JWT."""
+"""Dual JWT authentication: Django SimpleJWT + Supabase Auth JWT (HS256/RS256)."""
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 import jwt
+from jwt import PyJWKClient
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -11,7 +12,10 @@ User = get_user_model()
 
 
 class SupabaseOrSimpleJWTAuthentication(JWTAuthentication):
-    """Validates SimpleJWT first; falls back to Supabase HS256 JWT if configured."""
+    """Validates SimpleJWT first; falls back to Supabase HS256/RS256 JWT."""
+
+    def authenticate_header(self, request) -> str:
+        return 'Bearer realm="api"'
 
     def authenticate(self, request):
         header = self.get_header(request)
@@ -25,25 +29,15 @@ class SupabaseOrSimpleJWTAuthentication(JWTAuthentication):
         # 1. Try SimpleJWT
         try:
             validated_token = self.get_validated_token(raw_token)
-            return self.get_user(validated_token), validated_token
+            user = self.get_user(validated_token)
+            if not user.is_active:
+                raise AuthenticationFailed("User account is suspended.")
+            return user, validated_token
         except (InvalidToken, TokenError):
             pass
 
         # 2. Fallback to Supabase JWT
-        supabase_secret = getattr(settings, "SUPABASE_JWT_SECRET", "")
-        if not supabase_secret:
-            raise AuthenticationFailed("Invalid or expired authentication token.")
-
-        try:
-            payload = jwt.decode(
-                raw_token,
-                supabase_secret,
-                algorithms=["HS256"],
-                audience="authenticated",
-            )
-        except jwt.PyJWTError as exc:
-            raise AuthenticationFailed("Invalid Supabase token.") from exc
-
+        payload = self._decode_supabase_token(raw_token)
         sub = payload.get("sub")
         email = payload.get("email")
         if not sub or not email:
@@ -64,6 +58,29 @@ class SupabaseOrSimpleJWTAuthentication(JWTAuthentication):
                 user.save(update_fields=["supabase_uid"])
 
         if not user.is_active:
-            raise AuthenticationFailed("User account is disabled.")
+            raise AuthenticationFailed("User account is suspended.")
 
         return user, payload
+
+    def _decode_supabase_token(self, raw_token: bytes) -> dict:
+        supabase_secret = getattr(settings, "SUPABASE_JWT_SECRET", "")
+        supabase_url = getattr(settings, "SUPABASE_URL", "").rstrip("/")
+        if not supabase_secret and not supabase_url:
+            raise AuthenticationFailed("Invalid or expired authentication token.")
+
+        try:
+            unverified_header = jwt.get_unverified_header(raw_token)
+            alg = unverified_header.get("alg", "HS256")
+            if alg == "RS256" and supabase_url:
+                jwks_client = PyJWKClient(f"{supabase_url}/auth/v1/.well-known/jwks.json")
+                signing_key = jwks_client.get_signing_key_from_jwt(raw_token).key
+                return jwt.decode(
+                    raw_token, signing_key, algorithms=["RS256"], audience="authenticated"
+                )
+            if not supabase_secret:
+                raise AuthenticationFailed("Invalid or expired authentication token.")
+            return jwt.decode(
+                raw_token, supabase_secret, algorithms=["HS256"], audience="authenticated"
+            )
+        except jwt.PyJWTError as exc:
+            raise AuthenticationFailed("Invalid Supabase token.") from exc

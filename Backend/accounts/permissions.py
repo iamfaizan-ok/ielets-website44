@@ -1,6 +1,7 @@
-"""Object-level ownership and AI credit/plan permissions."""
+"""Object-level ownership, AI credit/plan permissions, and tiered rate throttles."""
 
 from rest_framework.permissions import BasePermission
+from rest_framework.throttling import SimpleRateThrottle, UserRateThrottle
 
 
 class IsOwnerOnly(BasePermission):
@@ -13,10 +14,30 @@ class IsOwnerOnly(BasePermission):
 
 
 class HasAICreditsOrProPlan(BasePermission):
-    """Requires PRO plan or at least 1 remaining AI credit."""
+    """Verifies active account + active PRO subscription (not expired) or remaining AI credits."""
 
-    message = "Insufficient AI credits. Upgrade to Pro or add credits to continue."
+    message = "Insufficient AI credits or expired Pro plan."
 
     def has_permission(self, request, view) -> bool:
         user = request.user
         return bool(user and user.is_authenticated and user.has_ai_access())
+
+
+class AuthIPRateThrottle(SimpleRateThrottle):
+    """Brute-force protection on auth endpoints (10/minute per IP)."""
+
+    scope = "auth_burst"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {
+            "scope": self.scope,
+            "ident": self.get_ident(request),
+        }
+
+
+class AIMinuteThrottle(UserRateThrottle):
+    scope = "ai_eval_min"
+
+
+class AIHourThrottle(UserRateThrottle):
+    scope = "ai_eval_hour"

@@ -20,13 +20,12 @@ class IELTSTest(models.Model):
     category = models.CharField(
         max_length=16, choices=Category.choices, default=Category.ACADEMIC
     )
-    # Structured text payload: passages, writing prompts, listening transcript, or speaking parts
+    duration_minutes = models.PositiveSmallIntegerField(default=60)
     content = models.JSONField(default=dict)
-    # Cloudflare R2 key/URL for Listening MP3 or Writing Task 1 chart image (never stores raw blobs in DB)
     media_key = models.CharField(max_length=512, blank=True, default="")
     media_url = models.URLField(max_length=1024, blank=True, default="")
     is_active = models.BooleanField(default=True, db_index=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -50,7 +49,7 @@ class Question(models.Model):
     question_type = models.CharField(max_length=16, choices=QuestionType.choices)
     prompt = models.TextField()
     options = models.JSONField(default=list, blank=True)
-    # Anti-cheat: hidden from exam delivery serializers; only revealed after submission
+    # Anti-cheat: deferred at query level & omitted from take serializers
     correct_answer = models.CharField(max_length=255)
     explanation = models.TextField(blank=True, default="")
 
